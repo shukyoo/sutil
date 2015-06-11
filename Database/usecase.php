@@ -135,3 +135,7 @@ User::reg([
 User::get(1);
 User::getNameLike('mike');
 
+
+
+Query::fetchAll();
+Schema::createTable();

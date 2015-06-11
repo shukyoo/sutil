@@ -4,7 +4,7 @@
  * Simple model, for data service
  * Not ORM
  */
-class Model
+abstract class Model
 {
     protected $connection;
 

@@ -2,13 +2,23 @@
 
 class Manager
 {
-    public function __construct()
+
+
+    protected $config = [];
+    protected $connections = [];
+
+    public function __construct($config = [])
     {
-        echo 'a';
+        $this->config = $config;
     }
 
-    public function test()
+    public function connect($connection = null)
     {
-        echo 'b';
+
+    }
+
+    public function __call($method, $args)
+    {
+
     }
 }

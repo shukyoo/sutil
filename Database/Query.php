@@ -1,9 +1,26 @@
 <?php namespace Sutil\Database;
 
 use Closure;
+use PDO;
 
 class Query implements QueryInterface
 {
+    protected $connection = null;
+
+    public function __construct(Connection $connection)
+    {
+        $this->connection = $connection;
+    }
+
+    /**
+     * @return \PDOStatement
+     */
+    protected function prepare($sql, $bind = null)
+    {
+
+    }
+
+
     /**
      * $sql = 'SELECT * FROM users WHERE gender=?';
      * fetchAll($sql, ['gender' => 'boy']);
@@ -12,37 +29,37 @@ class Query implements QueryInterface
      * @param array $bind
      * @return array with nature index, empty array returned if nothing or false
      */
-    public function fetchAll($sql, $bind = [])
+    public function fetchAll($sql, $bind = null)
     {
-        
+        return $this->prepare($sql, $bind)->fetchAll(PDO::FETCH_ASSOC);
     }
     
     /**
-     * $sql = 'SELECT * FROM users WHERE gender=?';
-     * fetchAllIndexed('id', $sql, ['gender' => 'boy'])
-     * 
-     * @param string $index_field
+     * The first field will be the indexed key, recommend
+     * $sql = 'SELECT id, name, gender FROM users WHERE gender=?';
+     * fetchAllIndexed($sql, ['gender' => 'boy'])
+     *
      * @param string $sql
      * @param array $bind
      * @return array fetch all with specified index, empty array returned if nothing or false
      */
-    public function fetchAllIndexed($index_field, $sql, $bind = [])
+    public function fetchAllIndexed($sql, $bind = null)
     {
-        
+        return $this->prepare($sql, $bind)->fetchAll(PDO::FETCH_UNIQUE | PDO::FETCH_ASSOC);
     }
     
     /**
-     * $sql = 'SELECT * FROM users WHERE gender=?';
-     * fetchAllGrouped('age', $sql. ['gender' => 'boy'])
-     * 
-     * @param string $group_field
+     * The first key will be the keys of group, recommend
+     * $sql = 'SELECT age, id, name FROM users WHERE gender=?';
+     * fetchAllGrouped($sql, ['gender' => 'boy'])
+     *
      * @param string $sql
      * @param array $bind
      * @return array fetch all grouped with specified field, empty array returned if nothing or false
      */
-    public function fetchAllGrouped($group_field, $sql, $bind = [])
+    public function fetchAllGrouped($sql, $bind = null)
     {
-        
+        return $this->prepare($sql, $bind)->fetchAll(PDO::FETCH_GROUP | PDO::FETCH_ASSOC);
     }
     
     /**
@@ -54,9 +71,9 @@ class Query implements QueryInterface
      * @param array $bind
      * @return array return array of classes, empty array returned if nothing or false
      */
-    public function fetchAllClass($class, $sql, $bind = [])
+    public function fetchAllClass($class, $sql, $bind = null)
     {
-        
+        return $this->prepare($sql, $bind)->fetchAll(PDO::FETCH_CLASS | PDO::FETCH_PROPS_LATE, $class);
     }
     
     /**
@@ -67,9 +84,9 @@ class Query implements QueryInterface
      * @param array $bind
      * @return array one row, empty array returned if nothing or false
      */
-    public function fetchRow($sql, $bind = [])
+    public function fetchRow($sql, $bind = null)
     {
-        
+        return $this->prepare($sql, $bind)->fetch(PDO::FETCH_ASSOC);
     }
     
     /**
@@ -81,9 +98,11 @@ class Query implements QueryInterface
      * @param array $bind
      * @return object|null return instance of the class, null returned if nothing or false
      */
-    public function fetchRowClass($class, $sql, $bind = [])
+    public function fetchRowClass($class, $sql, $bind = null)
     {
-        
+        $stmt = $this->prepare($sql, $bind);
+        $stmt->setFetchMode(PDO::FETCH_CLASS | PDO::FETCH_PROPS_LATE, $class);
+        return $stmt->fetch();
     }
     
     /**
@@ -96,7 +115,7 @@ class Query implements QueryInterface
      */
     public function fetchCol($sql, $bind)
     {
-        
+        return $this->prepare($sql, $bind)->fetchAll(PDO::FETCH_COLUMN, 0);
     }
     
     /**
@@ -107,23 +126,28 @@ class Query implements QueryInterface
      * @param array $bind
      * @return array return pairs of first column as Key and second column as Value, empty array returned if nothing or false
      */
-    public function fetchPairs($sql, $bind = [])
+    public function fetchPairs($sql, $bind = null)
     {
-        
+        return $this->prepare($sql, $bind)->fetchAll(PDO::FETCH_KEY_PAIR);
     }
     
     /**
+     * The first field is the keys of group
      * $sql = 'SELECT age, id, name FROM users WHERE gender=?';
-     * fetchPairsGrouped('age', $sql, ['gender' => 'boy'])
+     * fetchPairsGrouped($sql, ['gender' => 'boy'])
      * 
      * @param string $group_field
      * @param string $sql
      * @param array $bind
      * @return array return grouped pairs of K/V with specified field, empty array returned if nothing of false
      */
-    public function fetchPairsGrouped($group_field, $sql, $bind = [])
+    public function fetchPairsGrouped($sql, $bind = null)
     {
-        
+        $data = [];
+        foreach ($this->prepare($sql, $bind)->fetchAll(PDO::FETCH_NUM) as $row) {
+            $data[$row[0]] = [$row[1] => $row[2]];
+        }
+        return $data;
     }
     
     /**
@@ -134,9 +158,9 @@ class Query implements QueryInterface
      * @param array $bind
      * @return mixed return one column value, false returned if nothing or false
      */
-    public function fetchOne($sql, $bind = [])
+    public function fetchOne($sql, $bind = null)
     {
-        
+        return $this->prepare($sql, $bind)->fetchColumn(0);
     }
     
     /**
@@ -145,9 +169,9 @@ class Query implements QueryInterface
      * @param array $bind
      * @return mixed
      */
-    public function query($sql, $bind = [])
+    public function query($sql, $bind = null)
     {
-        
+        return $this->prepare($sql, $bind);
     }
     
     /**
@@ -158,7 +182,14 @@ class Query implements QueryInterface
      */
     public function insert($table, $data)
     {
-        
+        $cols = [];
+        $vals = [];
+        foreach ($data as $col => $val) {
+            $cols[] = $this->quoteIdentifier($col);
+            $vals[] = '?';
+        }
+        $sql = "INSERT INTO " . $this->quoteIdentifier($table) . ' (' . implode(', ', $cols) . ') VALUES (' . implode(', ', $vals) . ')';
+        return $this->query($sql, array_values($data));
     }
     
     /**
@@ -179,7 +210,33 @@ class Query implements QueryInterface
      */
     public function update($table, $data, $where = null)
     {
-        
+        $set = [];
+        foreach ($data as $col => $val) {
+            $val = '?';
+            $set[] = $this->quoteIdentifier($col) . ' = ' . $val;
+        }
+        $where = $this->where($where);
+        $sql = 'UPDATE ' . $this->quoteIdentifier($table) . ' SET ' . implode(', ', $set) . (($where) ? " WHERE $where" : '');
+        return $this->query($sql, array_values($data));
+    }
+
+    /**
+     * Save
+     * Update if exists, or insert
+     * @param string $table
+     * @param array $data
+     * @param mixed $where
+     * @return boolean
+     */
+    public function save($table, $data, $where = null)
+    {
+        $where = $this->where($where);
+        $sql = 'SELECT COUNT(*) FROM ' . $this->quoteIdentifier($table) . (($where) ? " WHERE $where" : '');
+        if ($this->fetchOne($sql)) {
+            return $this->update($table, $data, $where);
+        } else {
+            return $this->insert($table, $data);
+        }
     }
     
     /**
@@ -190,7 +247,9 @@ class Query implements QueryInterface
      */
     public function delete($table, $where = null)
     {
-        
+        $where = $this->where($where);
+        $sql = 'DELETE FROM ' . $this->quoteIdentifier($table) . (($where) ? " WHERE $where" : '');
+        return $this->query($sql);
     }
     
     /**
@@ -202,7 +261,7 @@ class Query implements QueryInterface
      */
     public function increment($table, $field, $amount = 1)
     {
-        
+        $sql = 'UPDATE ';
     }
     
     /**

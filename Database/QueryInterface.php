@@ -12,29 +12,29 @@ interface QueryInterface
      * @param array $bind
      * @return array with nature index, empty array returned if nothing or false
      */
-    public function fetchAll($sql, $bind = []);
-    
+    public function fetchAll($sql, $bind = null);
+
     /**
-     * $sql = 'SELECT * FROM users WHERE gender=?';
-     * fetchAllIndexed('id', $sql, ['gender' => 'boy'])
-     * 
-     * @param string $index_field
+     * The first field will be the indexed key, recommend
+     * $sql = 'SELECT id, name, gender FROM users WHERE gender=?';
+     * fetchAllIndexed($sql, ['gender' => 'boy'])
+     *
      * @param string $sql
      * @param array $bind
      * @return array fetch all with specified index, empty array returned if nothing or false
      */
-    public function fetchAllIndexed($index_field, $sql, $bind = []);
-    
+    public function fetchAllIndexed($sql, $bind = null);
+
     /**
-     * $sql = 'SELECT * FROM users WHERE gender=?';
-     * fetchAllGrouped('age', $sql. ['gender' => 'boy'])
-     * 
-     * @param string $group_field
+     * The first key will be the keys of group, recommend
+     * $sql = 'SELECT age, id, name FROM users WHERE gender=?';
+     * fetchAllGrouped($sql, ['gender' => 'boy'])
+     *
      * @param string $sql
      * @param array $bind
      * @return array fetch all grouped with specified field, empty array returned if nothing or false
      */
-    public function fetchAllGrouped($group_field, $sql, $bind = []);
+    public function fetchAllGrouped($sql, $bind = null);
     
     /**
      * $sql = 'SELECT * FROM users WHERE gender=?';
@@ -45,7 +45,7 @@ interface QueryInterface
      * @param array $bind
      * @return array return array of classes, empty array returned if nothing or false
      */
-    public function fetchAllClass($class, $sql, $bind = []);
+    public function fetchAllClass($class, $sql, $bind = null);
     
     /**
      * $sql = 'SELECT * FROM users WHERE id=?';
@@ -55,7 +55,7 @@ interface QueryInterface
      * @param array $bind
      * @return array one row, empty array returned if nothing or false
      */
-    public function fetchRow($sql, $bind = []);
+    public function fetchRow($sql, $bind = null);
     
     /**
      * $sql = 'SELECT * FROM users WHERE id=?';
@@ -66,7 +66,7 @@ interface QueryInterface
      * @param array $bind
      * @return object|null return instance of the class, null returned if nothing or false
      */
-    public function fetchRowClass($class, $sql, $bind = []);
+    public function fetchRowClass($class, $sql, $bind = null);
     
     /**
      * $sql = 'SELECT name FROM users WHERE gender=?';
@@ -86,18 +86,19 @@ interface QueryInterface
      * @param array $bind
      * @return array return pairs of first column as Key and second column as Value, empty array returned if nothing or false
      */
-    public function fetchPairs($sql, $bind = []);
-    
+    public function fetchPairs($sql, $bind = null);
+
     /**
+     * The first field is the keys of group
      * $sql = 'SELECT age, id, name FROM users WHERE gender=?';
-     * fetchPairsGrouped('age', $sql, ['gender' => 'boy'])
-     * 
+     * fetchPairsGrouped($sql, ['gender' => 'boy'])
+     *
      * @param string $group_field
      * @param string $sql
      * @param array $bind
      * @return array return grouped pairs of K/V with specified field, empty array returned if nothing of false
      */
-    public function fetchPairsGrouped($group_field, $sql, $bind = []);
+    public function fetchPairsGrouped($sql, $bind = null);
     
     /**
      * $sql = 'SELECT name FROM users WHERE id=?';
@@ -107,7 +108,7 @@ interface QueryInterface
      * @param array $bind
      * @return mixed return one column value, false returned if nothing or false
      */
-    public function fetchOne($sql, $bind = []);
+    public function fetchOne($sql, $bind = null);
     
     /**
      * Run SQL
@@ -115,7 +116,7 @@ interface QueryInterface
      * @param array $bind
      * @return mixed
      */
-    public function query($sql, $bind = []);
+    public function query($sql, $bind = null);
     
     /**
      * Insert
@@ -139,6 +140,16 @@ interface QueryInterface
      * @return boolean
      */
     public function update($table, $data, $where = null);
+
+    /**
+     * Save
+     * Update if exists, or insert
+     * @param string $table
+     * @param array $data
+     * @param mixed $where
+     * @return boolean
+     */
+    public function save($table, $data, $where = null);
     
     /**
      * Delete
