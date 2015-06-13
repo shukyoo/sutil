@@ -1,4 +1,4 @@
-<?php namespace Sutil\Database;
+<?php namespace Sutil\Database\Adapters;
 
 use PDO;
 
@@ -22,7 +22,7 @@ class MySQL extends Adapter implements AdapterInterface
     const DEFAULT_PERSISTENT = false;
 
     /**
-     * @return PDO
+     * {@inheritDoc}
      */
     public function connect()
     {
@@ -50,5 +50,13 @@ class MySQL extends Adapter implements AdapterInterface
         $password = empty($this->_config['password']) ? null : $this->_config['password'];
 
         return new PDO($dsn, $username, $password, $options);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function quoteIdentifier($identifier)
+    {
+        return '`'.str_replace('`', '``', $identifier).'`';
     }
 }

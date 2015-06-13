@@ -4,6 +4,27 @@ use Closure;
 
 interface QueryInterface
 {
+
+    /**
+     * @param string $sql
+     * @param array|closure $bind
+     * @return \PDOStatement
+     */
+    public function prepare($sql, $bind = null);
+
+    /**
+     * @param string $sql
+     * @param array|closure $bind
+     * @return boolean
+     */
+    public function query($sql, $bind = null);
+
+    /**
+     * Get last insert id
+     * @return int|string
+     */
+    public function lastInsertId();
+
     /**
      * $sql = 'SELECT * FROM users WHERE gender=?';
      * fetchAll($sql, ['gender' => 'boy']);
@@ -111,26 +132,12 @@ interface QueryInterface
     public function fetchOne($sql, $bind = null);
     
     /**
-     * Run SQL
-     * @param string $sql
-     * @param array $bind
-     * @return mixed
-     */
-    public function query($sql, $bind = null);
-    
-    /**
      * Insert
      * @param string $table
      * @param array $data
      * @return boolean
      */
     public function insert($table, $data);
-    
-    /**
-     * Get last insert id
-     * @return int|string
-     */
-    public function lastInsertId();
     
     /**
      * Update
@@ -203,29 +210,4 @@ interface QueryInterface
      */
     public function rollBack();
     
-    
-    /**
-     * where clause, in chain type
-     * where('user_id=?', 2)
-     * where(['user_id=?' => 2, 'user_name=?' => 'test', 'age>=?' => 12])
-     * where('user_id in?', [1,2,3])
-     * where('user_id notin?', [1,2,3])
-     * where('user_id between?', [1, 5])
-     * where('user_id is null')
-     * where('user_id is not null')
-     * where('user_id=?', function(){
-     *     return 2;
-     * })
-     * where(function(){
-     *     return ['user_id=?' => 2, 'user_name' => 'test'];
-     * });
-     * where(['id=?' => 1, 'or' => ['id' => 2]])
-     * where([['id=?' => 1, 'name=?' => 'test'], ['id=?' => 2, 'name=?' => 'ttt']])
-     * where(['id=?' => 1, ['name' => 'test']])
-     * 
-     * @param string|array $set
-     * @param mixed $value
-     * @return $this
-     */
-    public function where($set, $value = null);
 }

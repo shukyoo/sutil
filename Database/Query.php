@@ -1,33 +1,48 @@
 <?php namespace Sutil\Database;
 
 use Closure;
+use Sutil\Database\ConnectionInterface;
 use PDO;
 
 class Query implements QueryInterface
 {
-    protected $connection = null;
+    protected $_connection = null;
 
-    public function __construct(Connection $connection)
+    public function __construct(ConnectionInterface $connection)
     {
-        $this->connection = $connection;
+        $this->_connection = $connection;
     }
 
     /**
-     * @return \PDOStatement
+     * {@inheritDoc}
      */
-    protected function prepare($sql, $bind = null)
+    public function prepare($sql, $bind = null)
     {
+        $stmt = $this->_connection->prepare($sql);
+        $stmt->execute($bind);
+        return $stmt;
+    }
 
+    /**
+     * {@inheritDoc}
+     */
+    public function query($sql, $bind = null)
+    {
+        $stmt = $this->_connection->prepare($sql);
+        return $stmt->execute($bind);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function lastInsertId()
+    {
+        return $this->_connection->getPDO()->lastInsertId();
     }
 
 
     /**
-     * $sql = 'SELECT * FROM users WHERE gender=?';
-     * fetchAll($sql, ['gender' => 'boy']);
-     * 
-     * @param string $sql
-     * @param array $bind
-     * @return array with nature index, empty array returned if nothing or false
+     * {@inheritDoc}
      */
     public function fetchAll($sql, $bind = null)
     {
@@ -35,13 +50,7 @@ class Query implements QueryInterface
     }
     
     /**
-     * The first field will be the indexed key, recommend
-     * $sql = 'SELECT id, name, gender FROM users WHERE gender=?';
-     * fetchAllIndexed($sql, ['gender' => 'boy'])
-     *
-     * @param string $sql
-     * @param array $bind
-     * @return array fetch all with specified index, empty array returned if nothing or false
+     * {@inheritDoc}
      */
     public function fetchAllIndexed($sql, $bind = null)
     {
@@ -49,13 +58,7 @@ class Query implements QueryInterface
     }
     
     /**
-     * The first key will be the keys of group, recommend
-     * $sql = 'SELECT age, id, name FROM users WHERE gender=?';
-     * fetchAllGrouped($sql, ['gender' => 'boy'])
-     *
-     * @param string $sql
-     * @param array $bind
-     * @return array fetch all grouped with specified field, empty array returned if nothing or false
+     * {@inheritDoc}
      */
     public function fetchAllGrouped($sql, $bind = null)
     {
@@ -63,13 +66,7 @@ class Query implements QueryInterface
     }
     
     /**
-     * $sql = 'SELECT * FROM users WHERE gender=?';
-     * fetchAllClass('User', $sql, ['gender' => 'boy'])
-     * 
-     * @param string|object $class
-     * @param string $sql
-     * @param array $bind
-     * @return array return array of classes, empty array returned if nothing or false
+     * {@inheritDoc}
      */
     public function fetchAllClass($class, $sql, $bind = null)
     {
@@ -77,12 +74,7 @@ class Query implements QueryInterface
     }
     
     /**
-     * $sql = 'SELECT * FROM users WHERE id=?';
-     * fetchRow($sql, ['id' => 1])
-     * 
-     * @param string $sql
-     * @param array $bind
-     * @return array one row, empty array returned if nothing or false
+     * {@inheritDoc}
      */
     public function fetchRow($sql, $bind = null)
     {
@@ -90,13 +82,7 @@ class Query implements QueryInterface
     }
     
     /**
-     * $sql = 'SELECT * FROM users WHERE id=?';
-     * fetchRowClass('User', $sql, ['id' => 1])
-     * 
-     * @param string|object $class
-     * @param string $sql
-     * @param array $bind
-     * @return object|null return instance of the class, null returned if nothing or false
+     * {@inheritDoc}
      */
     public function fetchRowClass($class, $sql, $bind = null)
     {
@@ -106,12 +92,7 @@ class Query implements QueryInterface
     }
     
     /**
-     * $sql = 'SELECT name FROM users WHERE gender=?';
-     * fetchCol($sql, ['gender' => 'boy']);
-     * 
-     * @param string $sql
-     * @param array $bind
-     * @return array return first column array, empty array returned if nothing or false
+     * {@inheritDoc}
      */
     public function fetchCol($sql, $bind)
     {
@@ -119,12 +100,7 @@ class Query implements QueryInterface
     }
     
     /**
-     * $sql = 'SELECT id, name FROM users WHERE gender=?';
-     * fetchPairs($sql, ['gender' => 'boy'])
-     * 
-     * @param string $sql
-     * @param array $bind
-     * @return array return pairs of first column as Key and second column as Value, empty array returned if nothing or false
+     * {@inheritDoc}
      */
     public function fetchPairs($sql, $bind = null)
     {
@@ -132,14 +108,7 @@ class Query implements QueryInterface
     }
     
     /**
-     * The first field is the keys of group
-     * $sql = 'SELECT age, id, name FROM users WHERE gender=?';
-     * fetchPairsGrouped($sql, ['gender' => 'boy'])
-     * 
-     * @param string $group_field
-     * @param string $sql
-     * @param array $bind
-     * @return array return grouped pairs of K/V with specified field, empty array returned if nothing of false
+     * {@inheritDoc}
      */
     public function fetchPairsGrouped($sql, $bind = null)
     {
@@ -151,62 +120,31 @@ class Query implements QueryInterface
     }
     
     /**
-     * $sql = 'SELECT name FROM users WHERE id=?';
-     * fetchOne($sql, ['id' => 1])
-     * 
-     * @param string $sql
-     * @param array $bind
-     * @return mixed return one column value, false returned if nothing or false
+     * {@inheritDoc}
      */
     public function fetchOne($sql, $bind = null)
     {
         return $this->prepare($sql, $bind)->fetchColumn(0);
     }
+
     
     /**
-     * Run SQL
-     * @param string $sql
-     * @param array $bind
-     * @return mixed
-     */
-    public function query($sql, $bind = null)
-    {
-        return $this->prepare($sql, $bind);
-    }
-    
-    /**
-     * Insert
-     * @param string $table
-     * @param array $data
-     * @return boolean
+     * {@inheritDoc}
      */
     public function insert($table, $data)
     {
         $cols = [];
         $vals = [];
         foreach ($data as $col => $val) {
-            $cols[] = $this->quoteIdentifier($col);
+            $cols[] = $this->_quoteIdentifier($col);
             $vals[] = '?';
         }
-        $sql = "INSERT INTO " . $this->quoteIdentifier($table) . ' (' . implode(', ', $cols) . ') VALUES (' . implode(', ', $vals) . ')';
+        $sql = "INSERT INTO " . $this->_quoteIdentifier($table) . ' (' . implode(', ', $cols) . ') VALUES (' . implode(', ', $vals) . ')';
         return $this->query($sql, array_values($data));
     }
     
     /**
-     * Get last insert id
-     * @return int|string
-     */
-    public function lastInsertId()
-    {
-        
-    }
-    
-    /**
-     * Update
-     * @param string $table
-     * @param array $data
-     * @param mixed $where
-     * @return boolean
+     * {@inheritDoc}
      */
     public function update($table, $data, $where = null)
     {
@@ -221,17 +159,12 @@ class Query implements QueryInterface
     }
 
     /**
-     * Save
-     * Update if exists, or insert
-     * @param string $table
-     * @param array $data
-     * @param mixed $where
-     * @return boolean
+     * {@inheritDoc}
      */
     public function save($table, $data, $where = null)
     {
         $where = $this->where($where);
-        $sql = 'SELECT COUNT(*) FROM ' . $this->quoteIdentifier($table) . (($where) ? " WHERE $where" : '');
+        $sql = 'SELECT COUNT(*) FROM ' . $this->_quoteIdentifier($table) . (($where) ? " WHERE $where" : '');
         if ($this->fetchOne($sql)) {
             return $this->update($table, $data, $where);
         } else {
@@ -240,24 +173,17 @@ class Query implements QueryInterface
     }
     
     /**
-     * Delete
-     * @param string $table
-     * @param mixed $where
-     * @return boolean
+     * {@inheritDoc}
      */
     public function delete($table, $where = null)
     {
         $where = $this->where($where);
-        $sql = 'DELETE FROM ' . $this->quoteIdentifier($table) . (($where) ? " WHERE $where" : '');
+        $sql = 'DELETE FROM ' . $this->_quoteIdentifier($table) . (($where) ? " WHERE $where" : '');
         return $this->query($sql);
     }
     
     /**
-     * Increment
-     * @param string $table
-     * @param string $field
-     * @param int $amount
-     * @return boolean
+     * {@inheritDoc}
      */
     public function increment($table, $field, $amount = 1)
     {
@@ -265,11 +191,7 @@ class Query implements QueryInterface
     }
     
     /**
-     * Decrement
-     * @param string $table
-     * @param string $field
-     * @param int $amount
-     * @return boolean
+     * {@inheritDoc}
      */
     public function decrement($table, $field, $amount = 1)
     {
@@ -277,10 +199,7 @@ class Query implements QueryInterface
     }
     
     /**
-     * Execute a Closure within a transaction.
-     * @param \Closure $callback
-     * @return mixed
-     * @throws \Exception
+     * {@inheritDoc}
      */
     public function transaction(Closure $callback)
     {
@@ -288,8 +207,7 @@ class Query implements QueryInterface
     }
     
     /**
-     * Start a new database transaction.
-     * @return void
+     * {@inheritDoc}
      */
     public function beginTransaction()
     {
@@ -297,8 +215,7 @@ class Query implements QueryInterface
     }
     
     /**
-     * Commit the active database transaction.
-     * @return void
+     * {@inheritDoc}
      */
     public function commit()
     {
@@ -306,15 +223,14 @@ class Query implements QueryInterface
     }
     
     /**
-     * Rollback the active database transaction.
-     * @return void
+     * {@inheritDoc}
      */
     public function rollBack()
     {
         
     }
-    
-    
+
+
     /**
      * where clause, in chain type
      * where('user_id=?', 2)
@@ -333,13 +249,86 @@ class Query implements QueryInterface
      * where(['id=?' => 1, 'or' => ['id' => 2]])
      * where([['id=?' => 1, 'name=?' => 'test'], ['id=?' => 2, 'name=?' => 'ttt']])
      * where(['id=?' => 1, ['name' => 'test']])
-     * 
+     *
      * @param string|array $set
      * @param mixed $value
      * @return $this
      */
-    public function where($set, $value = null)
+    protected function _where($cond, $value = null, &$bind = [])
     {
-        
+        if (!is_array($cond) && null === $value) {
+            return $cond;
+        }
+        if (is_string($cond)) {
+            return $this->_wherePart($cond, $value, $bind);
+        }
+        $where_str = '';
+
+    }
+
+    /**
+     * ('id', 1)
+     * ('id=?', 1)
+     * ('id in?', [1,2])
+     * in, notin, between, like, llike, rlike
+     */
+    protected function _wherePart($cond, $value, &$bind = [])
+    {
+        strpos($cond, '?') || $cond = "{$cond}=?";
+        preg_match('/(\w+)(\s+[\w]+|\s*[!=><]+)\s*\?\s*/', $cond, $matches);
+        if (empty($matches[2])) {
+            throw new \Exception('Invalid where condition');
+        }
+        $field = $this->_quoteIdentifier($matches[1]);
+        $opt = trim($matches[2]);
+        $part_str = $field;
+        switch ($opt) {
+            case 'in':
+                $part_str .= " IN({$this->_inExp($value, $bind)})";
+                break;
+            case 'notin':
+                $part_str .= " NOT IN({$this->_inExp($value, $bind)})";
+                break;
+            case 'between':
+                $bind = array_merge($bind, $value);
+                $part_str .= " BETWEEN ? AND ?";
+                break;
+            case 'like':
+                $bind[] = "%{$value}%";
+                $part_str .= ' LIKE ?';
+                break;
+            case 'llike':
+                $bind[] = "%{$value}";
+                $part_str .= ' LIKE ?';
+                break;
+            case 'rlike':
+                $bind[] = "{$value}%";
+                $part_str .= ' LIKE ?';
+                break;
+            default:
+                $bind[] = $value;
+                $part_str .= "{$opt}?";
+                break;
+        }
+        return $part_str;
+    }
+
+    protected function _inExp($data, &$bind = [])
+    {
+        if (is_string($data)) {
+            $data = explode(',', $data);
+        }
+        $str = '';
+        foreach ($data as $v) {
+            $str .= '?,';
+            $bind[] = $v;
+        }
+        return trim($str, ',');
+    }
+
+
+    protected function _quoteIdentifier($identifier)
+    {
+        return $this->_connection->quoteIdentifier($identifier);
     }
 }
