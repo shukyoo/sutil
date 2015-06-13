@@ -146,16 +146,17 @@ class Query implements QueryInterface
     /**
      * {@inheritDoc}
      */
-    public function update($table, $data, $where = null)
+    public function update($table, $data, $where = null, $where_bind = [])
     {
         $set = [];
         foreach ($data as $col => $val) {
             $val = '?';
             $set[] = $this->quoteIdentifier($col) . ' = ' . $val;
         }
-        $where = $this->where($where);
-        $sql = 'UPDATE ' . $this->quoteIdentifier($table) . ' SET ' . implode(', ', $set) . (($where) ? " WHERE $where" : '');
-        return $this->query($sql, array_values($data));
+        $data = array_values($data);
+        $where = empty($where) ? '' : " WHERE {$this->where($where, null, $data, $where_bind)}";
+        $sql = "UPDATE {$this->quoteIdentifier($table)} SET {implode(', ', $set)}{$where}";
+        return $this->query($sql, $data);
     }
 
     /**
@@ -163,10 +164,11 @@ class Query implements QueryInterface
      */
     public function save($table, $data, $where = null)
     {
-        $where = $this->where($where);
-        $sql = 'SELECT COUNT(*) FROM ' . $this->_quoteIdentifier($table) . (($where) ? " WHERE $where" : '');
-        if ($this->fetchOne($sql)) {
-            return $this->update($table, $data, $where);
+        $where_bind = [];
+        $where = empty($where) ? '' : " WHERE {$this->where($where, null, $where_bind)}";
+        $sql = "SELECT COUNT(*) FROM {$this->_quoteIdentifier($table)}{$where}";
+        if ($this->fetchOne($sql, $where_bind)) {
+            return $this->update($table, $data, $where, $where_bind);
         } else {
             return $this->insert($table, $data);
         }
@@ -175,11 +177,12 @@ class Query implements QueryInterface
     /**
      * {@inheritDoc}
      */
-    public function delete($table, $where = null)
+    public function delete($table, $where = null, $where_bind = [])
     {
-        $where = $this->where($where);
-        $sql = 'DELETE FROM ' . $this->_quoteIdentifier($table) . (($where) ? " WHERE $where" : '');
-        return $this->query($sql);
+        $bind = [];
+        $where = empty($where) ? '' : " WHERE {$this->where($where, null, $bind, $where_bind)}";
+        $sql = "DELETE FROM {$this->_quoteIdentifier($table)}{$where}";
+        return $this->query($sql, $bind);
     }
     
     /**
@@ -232,7 +235,7 @@ class Query implements QueryInterface
 
 
     /**
-     * where clause, in chain type
+     * where clause
      * where('user_id=?', 2)
      * where(['user_id=?' => 2, 'user_name=?' => 'test', 'age>=?' => 12])
      * where('user_id in?', [1,2,3])
@@ -249,21 +252,44 @@ class Query implements QueryInterface
      * where(['id=?' => 1, 'or' => ['id' => 2]])
      * where([['id=?' => 1, 'name=?' => 'test'], ['id=?' => 2, 'name=?' => 'ttt']])
      * where(['id=?' => 1, ['name' => 'test']])
+     * where(['id' => 1, 'or id' => 2])
      *
-     * @param string|array $set
+     * @param string|array|closure $cond
      * @param mixed $value
-     * @return $this
+     * @param array &$bind
+     * @param array $where_bind [simple mode] elements count should be equal with ? count in $cond
+     * @return string
      */
-    protected function _where($cond, $value = null, &$bind = [])
+    protected function _where($cond, $value = null, &$bind = [], $where_bind = [])
     {
-        if (!is_array($cond) && null === $value) {
+        is_callable($cond) && $cond = $cond($this);
+        is_callable($value) && $value = $value($this);
+        if (is_string($cond)) {
+            if (null !== $value) {
+                return $this->_wherePart($cond, $value, $bind);
+            } elseif (!empty($where_bind)) {
+                $bind = array_merge($bind, $where_bind);
+            }
             return $cond;
         }
-        if (is_string($cond)) {
-            return $this->_wherePart($cond, $value, $bind);
-        }
         $where_str = '';
-
+        foreach ($cond as $key => $value) {
+            $uk = strtoupper(trim($key));
+            if (is_int($key) && is_array($value)) {
+                $uk = 'AND';
+            }
+            if (in_array($uk, ['OR', 'AND'])) {
+                $where_str .= " {$uk} ({$this->_where($value, null, $bind)})";
+            } else {
+                $co = 'AND';
+                if (strpos($uk, 'OR ')) {
+                    $co = 'OR';
+                    $key = str_replace('OR ', '', $key);
+                }
+                $where_str .= " {$co} {$this->_wherePart($key, $value, $bind)}";
+            }
+        }
+        return preg_replace('/^(AND|OR)\s+(.*)$/i', '\\2', trim($where_str));
     }
 
     /**

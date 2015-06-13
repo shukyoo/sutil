@@ -9,7 +9,7 @@ interface ConnectionInterface
     public function prepare($sql);
 
     /**
-     * @return \PDO
+     * @return \PDO the master one
      */
     public function getPDO();
 

@@ -15,7 +15,7 @@ use PDO;
  *     'options' => [], // optional
  * )
  */
-class MySQL extends Adapter implements AdapterInterface
+class Mysql extends Adapter implements AdapterInterface
 {
     const DEFAULT_HOST = '127.0.0.1';
     const DEFAULT_CHARSET = 'utf8';

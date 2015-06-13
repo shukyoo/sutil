@@ -30,6 +30,7 @@ abstract class Adapter
 
     public function getOptions()
     {
-        return array_merge($this->_options, $this->_config['options']);
+        $config_options = empty($this->_config['options']) ? [] : $this->_config['options'];
+        return array_merge($this->_options, $config_options);
     }
 }
