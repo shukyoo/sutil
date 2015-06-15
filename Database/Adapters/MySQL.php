@@ -11,7 +11,6 @@ use PDO;
  *     'username' => 'user', //optional default null
  *     'password' => '123', //optional default null
  *     'charset' => 'utf8', // optional default utf8
- *     'timezone' => 'xxx', // optional
  *     'options' => [], // optional
  * )
  */
@@ -19,7 +18,6 @@ class Mysql extends Adapter implements AdapterInterface
 {
     const DEFAULT_HOST = '127.0.0.1';
     const DEFAULT_CHARSET = 'utf8';
-    const DEFAULT_PERSISTENT = false;
 
     /**
      * {@inheritDoc}
@@ -41,9 +39,6 @@ class Mysql extends Adapter implements AdapterInterface
         $charset = empty($this->_config['charset']) ? self::DEFAULT_CHARSET : $this->_config['charset'];
         $options = $this->getOptions();
         $options[PDO::MYSQL_ATTR_INIT_COMMAND] = "SET NAMES '{$charset}'";
-        if (!empty($this->_config['timezone'])) {
-            $options[PDO::MYSQL_ATTR_INIT_COMMAND] .= ",time_zone='{$this->_config['timezone']}'";
-        }
 
         // user
         $username = empty($this->_config['username']) ? null : $this->_config['username'];

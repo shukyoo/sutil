@@ -3,8 +3,11 @@
 interface ConnectionInterface
 {
     /**
+     * Prepare statement
+     * Auto detect "select" sql, for use slave db
+     *
      * @param string $sql
-     * @return \PDOStatment
+     * @return \PDOStatement
      */
     public function prepare($sql);
 

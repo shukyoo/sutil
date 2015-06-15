@@ -19,7 +19,7 @@ class Query implements QueryInterface
     public function prepare($sql, $bind = null)
     {
         $stmt = $this->_connection->prepare($sql);
-        $stmt->execute($bind);
+        $stmt->execute($this->_bind($bind));
         return $stmt;
     }
 
@@ -29,7 +29,20 @@ class Query implements QueryInterface
     public function query($sql, $bind = null)
     {
         $stmt = $this->_connection->prepare($sql);
-        return $stmt->execute($bind);
+        return $stmt->execute($this->_bind($bind));
+    }
+
+    /**
+     * Parse bind as array
+     */
+    protected function _bind($bind)
+    {
+        if ($bind === null) {
+            return null;
+        }
+        is_callable($bind) && $bind = $bind();
+        is_array($bind) || $bind = [$bind];
+        return $bind;
     }
 
     /**
@@ -133,6 +146,7 @@ class Query implements QueryInterface
      */
     public function insert($table, $data)
     {
+        is_callable($data) && $data = $data();
         $cols = [];
         $vals = [];
         foreach ($data as $col => $val) {
@@ -146,15 +160,16 @@ class Query implements QueryInterface
     /**
      * {@inheritDoc}
      */
-    public function update($table, $data, $where = null, $where_bind = [])
+    public function update($table, $data, $where = null, $where_bind = null)
     {
+        is_callable($data) && $data = $data();
         $set = [];
         foreach ($data as $col => $val) {
             $val = '?';
             $set[] = $this->quoteIdentifier($col) . ' = ' . $val;
         }
         $data = array_values($data);
-        $where = empty($where) ? '' : " WHERE {$this->where($where, null, $data, $where_bind)}";
+        $where = empty($where) ? '' : " WHERE {$this->_where($where, null, $data, $where_bind)}";
         $sql = "UPDATE {$this->quoteIdentifier($table)} SET {implode(', ', $set)}{$where}";
         return $this->query($sql, $data);
     }
@@ -165,7 +180,7 @@ class Query implements QueryInterface
     public function save($table, $data, $where = null)
     {
         $where_bind = [];
-        $where = empty($where) ? '' : " WHERE {$this->where($where, null, $where_bind)}";
+        $where = empty($where) ? '' : " WHERE {$this->_where($where, null, $where_bind)}";
         $sql = "SELECT COUNT(*) FROM {$this->_quoteIdentifier($table)}{$where}";
         if ($this->fetchOne($sql, $where_bind)) {
             return $this->update($table, $data, $where, $where_bind);
@@ -177,10 +192,10 @@ class Query implements QueryInterface
     /**
      * {@inheritDoc}
      */
-    public function delete($table, $where = null, $where_bind = [])
+    public function delete($table, $where = null, $where_bind = null)
     {
         $bind = [];
-        $where = empty($where) ? '' : " WHERE {$this->where($where, null, $bind, $where_bind)}";
+        $where = empty($where) ? '' : " WHERE {$this->_where($where, null, $bind, $where_bind)}";
         $sql = "DELETE FROM {$this->_quoteIdentifier($table)}{$where}";
         return $this->query($sql, $bind);
     }
@@ -260,14 +275,15 @@ class Query implements QueryInterface
      * @param array $where_bind [simple mode] elements count should be equal with ? count in $cond
      * @return string
      */
-    protected function _where($cond, $value = null, &$bind = [], $where_bind = [])
+    protected function _where($cond, $value = null, &$bind = [], $where_bind = null)
     {
         is_callable($cond) && $cond = $cond($this);
         is_callable($value) && $value = $value($this);
         if (is_string($cond)) {
             if (null !== $value) {
                 return $this->_wherePart($cond, $value, $bind);
-            } elseif (!empty($where_bind)) {
+            } elseif (null !== $where_bind) {
+                is_array($where_bind) || $where_bind = [$where_bind];
                 $bind = array_merge($bind, $where_bind);
             }
             return $cond;

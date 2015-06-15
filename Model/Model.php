@@ -1,4 +1,4 @@
-<?php namespace Sutil\Database;
+<?php namespace Sutil\Model;
 
 /**
  * Simple model, for data service

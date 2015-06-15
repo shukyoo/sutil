@@ -1,5 +1,6 @@
 <?php
-define('LIB_PATH', dirname(__DIR__));
+define('ROOT_PATH', __DIR__ .'/../../');
+define('LIB_PATH', ROOT_PATH .'/Database');
 
 require LIB_PATH .'/Adapters/AdapterInterface.php';
 require LIB_PATH .'/Adapters/Adapter.php';

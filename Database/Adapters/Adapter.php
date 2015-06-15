@@ -13,7 +13,7 @@ abstract class Adapter
         PDO::ATTR_ORACLE_NULLS => PDO::NULL_NATURAL,
         PDO::ATTR_STRINGIFY_FETCHES => false,
         PDO::ATTR_EMULATE_PREPARES => false,
-        PDO::ATTR_PERSISTENT => false
+        PDO::ATTR_PERSISTENT => false,
     );
 
     protected $_config = [];
@@ -31,6 +31,6 @@ abstract class Adapter
     public function getOptions()
     {
         $config_options = empty($this->_config['options']) ? [] : $this->_config['options'];
-        return array_merge($this->_options, $config_options);
+        return array_diff_key($this->_options, $config_options) + $config_options;
     }
 }

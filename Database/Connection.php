@@ -38,9 +38,7 @@ class Connection implements ConnectionInterface
     protected function _masterAdapter($index = 0)
     {
         if (!isset($this->_master_adapters[$index])) {
-            $driver = $this->_master_configs[$index]['driver'];
-            $driver = '\\Sutil\\Database\\Adapters\\'.ucfirst(strtolower($driver));
-            $this->_master_adapters[$index] = new $driver($this->_master_configs[$index]);
+            $this->_master_adapters[$index] = $this->_adapter($this->_master_configs[$index]);
         }
         return $this->_master_adapters[$index];
     }
@@ -51,11 +49,21 @@ class Connection implements ConnectionInterface
     protected function _slaveAdapter($index = 0)
     {
         if (!isset($this->_slave_adapters[$index])) {
-            $driver = $this->_slave_configs[$index]['driver'];
-            $driver = '\\Sutil\\Database\\Adapters\\'. ucfirst(strtolower($driver));
-            $this->_slave_adapters[$index] = new $driver($this->_slave_configs[$index]);
+            $this->_slave_adapters[$index] = $this->_adapter($this->_slave_configs[$index]);
         }
         return $this->_slave_adapters[$index];
+    }
+
+    protected function _adapter($config)
+    {
+        if (empty($config['driver'])) {
+            throw new \Exception('Driver required in database config');
+        }
+        $driver = '\\Sutil\\Database\\Adapters\\'. ucfirst(strtolower($config['driver']));
+        if (!class_exists($driver)) {
+            throw new \Exception("The driver {$driver} has not been implemented");
+        }
+        return new $driver($config);
     }
 
     /**
@@ -85,11 +93,19 @@ class Connection implements ConnectionInterface
         return $this->_slave_pdos[$index];
     }
 
+    /**
+     * Get random index,for multi slaves/masters random selection
+     * @param int $count
+     * @return int
+     */
     protected function _index($count)
     {
         return ($count > 1) ? mt_rand(0, $count - 1) : 0;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public function prepare($sql)
     {
         $sql = trim($sql);

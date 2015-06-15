@@ -4,42 +4,6 @@
  * Facade for db query
  * Use this for raw and simple query
  * Recommend use model in normal project
- *
- * Auto detect master for write and slave for read
- * Config examples:
- * array(
- *     'driver' => 'mysql',
- *     'host' => '',
- *     'dbname' => '',
- *     'username' => '',
- *     'password' => '',
- *     'charset' => 'utf8',
- *     'timezone' => '',
- *     'options' => [],
- *     'slaves' => []
- * )
- * OR multi database
- * array(
- *     'mysql' => array(
- *         'driver' => 'mysql',
- *         'slaves' => array(
- *             array(
- *                 'host' => '',
- *                 'dbname' => '',
- *             )
- *         )
- *     ),
- *     'other_db2' => array(
- *         'driver' => 'mysql',
- *         'slave' => array(
- *             'host' => ''
- *         )
- *     ),
- *     'other3' => array(
- *         'masters' => [],
- *         'slaves' => []
- *     )
- * )
  */
 class DB
 {
@@ -67,7 +31,7 @@ class DB
      * @param string $name
      * @return Query
      */
-    public static function connect($name)
+    public static function connect($name = null)
     {
         return self::getQuery($name);
     }
