@@ -11,22 +11,9 @@ DB::config(array(
     'username' => 'root'
 ));
 
-$sql = 'select * from data_test';
-$data = DB::fetchAll($sql);
-p($data);
-
-$sql = 'select id, title from data_test';
-//$data = DB::fetchPairs($sql);
-
-/*
-$res = DB::insert('data_test', array(
-    'title' => '如果测试',
-    'content' => 'aaa测试__--bbbb',
-    'tt' => 10,
-    'create_time' => date('Y-m-d H:i:s')
-));*/
-// $res = DB::delete('data_test', 'id=?', 8);
-
+DB::update('data_test', array(
+    'tt' => DB::express('tt+1')
+), 'id=11');
 
 
 $xhprof_data = xhprof_disable();

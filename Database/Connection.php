@@ -12,8 +12,16 @@ class Connection implements ConnectionInterface
     protected $_slave_adapters = [];
     protected $_slave_pdos = [];
 
+    protected $_driver = '';
+
     public function __construct(array $config)
     {
+        if (empty($config['driver'])) {
+            throw new \Exception('Driver is required in the database config');
+        }
+        $this->_driver = strtolower($config['driver']);
+        unset($config['driver']);
+
         if (!empty($config['slaves'])) {
             $this->_slave_configs = $config['slaves'];
             unset($config['slaves']);
@@ -21,11 +29,10 @@ class Connection implements ConnectionInterface
             $this->_slave_configs[] = $config['slave'];
             unset($config['slave']);
         }
-        if (!empty($config['driver'])) {
-            unset($config['masters']);
-            $this->_master_configs[] = $config;
-        } elseif (!empty($config['masters'])) {
+        if (!empty($config['masters'])) {
             $this->_master_configs = $config['masters'];
+        } else {
+            $this->_master_configs[] = $config;
         }
         if (empty($this->_master_configs)) {
             throw new \Exception('Master database config is empty');
@@ -56,10 +63,7 @@ class Connection implements ConnectionInterface
 
     protected function _adapter($config)
     {
-        if (empty($config['driver'])) {
-            throw new \Exception('Driver required in database config');
-        }
-        $driver = '\\Sutil\\Database\\Adapters\\'. ucfirst(strtolower($config['driver']));
+        $driver = '\\Sutil\\Database\\Adapters\\'. ucfirst($this->_driver);
         if (!class_exists($driver)) {
             throw new \Exception("The driver {$driver} has not been implemented");
         }

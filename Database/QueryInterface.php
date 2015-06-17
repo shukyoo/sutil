@@ -167,24 +167,6 @@ interface QueryInterface
     public function delete($table, $where = null);
     
     /**
-     * Increment
-     * @param string $table
-     * @param string $field
-     * @param int $amount
-     * @return boolean
-     */
-    public function increment($table, $field, $amount = 1);
-    
-    /**
-     * Decrement
-     * @param string $table
-     * @param string $field
-     * @param int $amount
-     * @return boolean
-     */
-    public function decrement($table, $field, $amount = 1);
-    
-    /**
      * Execute a Closure within a transaction.
      * @param \Closure $callback
      * @return mixed

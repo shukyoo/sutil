@@ -1,16 +1,16 @@
-# Sutile\Database
+h# Sutile\Database
 This is a light database component based on PDO;
 It support multiple database;
 It support multiple master/slave mode;
 No ORM, Just SQL query, simple is beautiful;
-If you want to use ORM, recommend to use [Eloquent](https://github.com/illuminate/database)
+
 
 ## Install
 
 
 ## Useage
 
-### Config
+### Init Config
 
 ```PHP
 // Config
@@ -99,15 +99,6 @@ DB::delete('users', 'id=?', 1);
 [More about where clause](#where)
 
 
-### Increment / Decrement
-```php
-DB::increment('users', 'age', 1);
-
-DB::decrement('users', array(
-    'age' => 1,
-    'level' => 2
-));
-```
 
 ### Transaction
 ```php
@@ -144,7 +135,7 @@ try {
 | options | [optional] (array of PDO options) |
  
 
-### single mode
+### single database
 ```php
 DB::config(array(
     'driver' => 'mysql',
@@ -169,41 +160,46 @@ DB::config(array(
 ));
 ```
 
+### single database with master/slave mode
+```php
+// 1master 1slave
+DB::config(array(
+    'driver' => 'mysql',
+    'dbname' => 'test',
+    'slave' => array(
+        'dbname' => 'ttt',
+        'username' => 'dev'
+    )
+));
 
-
-	array(
-	    'driver' => 'mysql',
-	    'host' => '',
-	    'dbname' => '',
-	    'username' => '',
-	    'password' => '',
-	    'charset' => 'utf8',
-	    'timezone' => '',
-	    'options' => [],
-	    'slaves' => []
-	)
-	OR multi database
-	array(
-	    'mysql' => array(
-	        'driver' => 'mysql',
-	        'slaves' => array(
-	            array(
-	                'host' => '',
-	                'dbname' => '',
-	            )
-	        )
-	    ),
-	    'other_db2' => array(
-	        'driver' => 'mysql',
-	        'slave' => array(
-	            'host' => ''
-	        )
-	    ),
-	    'other3' => array(
-	        'masters' => [],
-	        'slaves' => []
-	    )
-	)
+// 1master multiple slaves
+DB::config(array(
+    'driver' => 'mysql',
+    'dbname' => 'test',
+    'slaves' => array(
+        ['dbname' => 'ss1', 'username' => 'dev1'],
+        ['dbname' => 'ss2', 'username' => 'dev2']
+    )
+));
 ```
+
+### multiple database with master/slave mode
+```php
+DB::config(
+    'db1' => array(
+        'driver' => 'mysql',
+        'dbname' => 'test1'
+        'slave' => [....]
+    ),
+    'db2' => array(
+        'driver' => 'mysql',
+        'dbname' => 'test2',
+        'slaves' => array(
+            [...], [...]
+        )
+    )
+);
+```
+
 
 ## Where Clause

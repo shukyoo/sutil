@@ -11,6 +11,7 @@ require LIB_PATH .'/Connection.php';
 require LIB_PATH .'/QueryInterface.php';
 require LIB_PATH .'/Query.php';
 
+require LIB_PATH .'/Expression.php';
 require LIB_PATH .'/DB.php';
 
 

@@ -165,12 +165,17 @@ class Query implements QueryInterface
         is_callable($data) && $data = $data();
         $set = [];
         foreach ($data as $col => $val) {
-            $val = '?';
-            $set[] = $this->quoteIdentifier($col) . ' = ' . $val;
+            if ($val instanceof Expression) {
+                $val = $val->getValue();
+                unset($data[$col]);
+            } else {
+                $val = '?';
+            }
+            $set[] = $this->_quoteIdentifier($col) . ' = ' . $val;
         }
         $data = array_values($data);
         $where = empty($where) ? '' : " WHERE {$this->_where($where, null, $data, $where_bind)}";
-        $sql = "UPDATE {$this->quoteIdentifier($table)} SET {implode(', ', $set)}{$where}";
+        $sql = "UPDATE {$this->_quoteIdentifier($table)} SET ". implode(', ', $set) . $where;
         return $this->query($sql, $data);
     }
 
@@ -198,22 +203,6 @@ class Query implements QueryInterface
         $where = empty($where) ? '' : " WHERE {$this->_where($where, null, $bind, $where_bind)}";
         $sql = "DELETE FROM {$this->_quoteIdentifier($table)}{$where}";
         return $this->query($sql, $bind);
-    }
-    
-    /**
-     * {@inheritDoc}
-     */
-    public function increment($table, $field, $amount = 1)
-    {
-        $sql = 'UPDATE ';
-    }
-    
-    /**
-     * {@inheritDoc}
-     */
-    public function decrement($table, $field, $amount = 1)
-    {
-        
     }
     
     /**
