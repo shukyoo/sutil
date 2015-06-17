@@ -1,6 +1,6 @@
 <?php namespace Sutil\Database;
 
-class Schema
+class Schema implements SchemaInterface
 {
 
 }

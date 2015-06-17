@@ -12,6 +12,24 @@ interface ConnectionInterface
     public function prepare($sql);
 
     /**
+     * Start a new database transaction.
+     * @return void
+     */
+    public function beginTransaction();
+
+    /**
+     * Commit the active database transaction.
+     * @return void
+     */
+    public function commit();
+
+    /**
+     * Rollback the active database transaction.
+     * @return void
+     */
+    public function rollBack();
+
+    /**
      * @return \PDO the master one
      */
     public function getPDO();

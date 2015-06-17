@@ -182,9 +182,8 @@ class Query implements QueryInterface
     /**
      * {@inheritDoc}
      */
-    public function save($table, $data, $where = null)
+    public function save($table, $data, $where = null, $where_bind = null)
     {
-        $where_bind = [];
         $where = empty($where) ? '' : " WHERE {$this->_where($where, null, $where_bind)}";
         $sql = "SELECT COUNT(*) FROM {$this->_quoteIdentifier($table)}{$where}";
         if ($this->fetchOne($sql, $where_bind)) {
@@ -210,7 +209,17 @@ class Query implements QueryInterface
      */
     public function transaction(Closure $callback)
     {
-        
+        $this->beginTransaction();
+
+        try {
+            $result = $callback($this);
+            $this->commit();
+        } catch (Exception $e) {
+            $this->rollBack();
+            throw $e;
+        }
+
+        return $result;
     }
     
     /**
@@ -218,7 +227,7 @@ class Query implements QueryInterface
      */
     public function beginTransaction()
     {
-        
+        $this->_connection->beginTransaction();
     }
     
     /**
@@ -226,7 +235,7 @@ class Query implements QueryInterface
      */
     public function commit()
     {
-        
+        $this->_connection->commit();
     }
     
     /**
@@ -234,7 +243,7 @@ class Query implements QueryInterface
      */
     public function rollBack()
     {
-        
+        $this->_connection->rollBack();
     }
 
 
@@ -272,8 +281,7 @@ class Query implements QueryInterface
             if (null !== $value) {
                 return $this->_wherePart($cond, $value, $bind);
             } elseif (null !== $where_bind) {
-                is_array($where_bind) || $where_bind = [$where_bind];
-                $bind = array_merge($bind, $where_bind);
+                return $this->_wherePart($cond, $where_bind, $bind);
             }
             return $cond;
         }

@@ -13,6 +13,7 @@ class Connection implements ConnectionInterface
     protected $_slave_pdos = [];
 
     protected $_driver = '';
+    protected $_transactions = 0;
 
     public function __construct(array $config)
     {
@@ -73,9 +74,9 @@ class Connection implements ConnectionInterface
     /**
      * @return PDO
      */
-    protected function _master()
+    protected function _master($index = null)
     {
-        $index = $this->_index(count($this->_master_configs));
+        null === $index && $index = $this->_index(count($this->_master_configs));
         if (!isset($this->_master_pdos[$index])) {
             $this->_master_pdos[$index] = $this->_masterAdapter($index)->connect();
         }
@@ -85,12 +86,12 @@ class Connection implements ConnectionInterface
     /**
      * @return PDO
      */
-    protected function _slave()
+    protected function _slave($index = null)
     {
         if (empty($this->_slave_configs)) {
-            return $this->_master();
+            return $this->_master($index);
         }
-        $index = $this->_index(count($this->_slave_configs));
+        null === $index && $index = $this->_index(count($this->_slave_configs));
         if (!isset($this->_slave_pdos[$index])) {
             $this->_slave_pdos[$index] = $this->_slaveAdapter($index)->connect();
         }
@@ -116,7 +117,44 @@ class Connection implements ConnectionInterface
         if (stripos($sql, 'SELECT') === 0) {
             return $this->_slave()->prepare($sql);
         } else {
-            return $this->_master()->prepare($sql);
+            // This index for separated transactions, ensure it's in same pdo instance
+            $index = $this->_transactions > 0 ? 0 : null;
+            return $this->_master($index)->prepare($sql);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function beginTransaction()
+    {
+        ++$this->_transactions;
+        if ($this->_transactions == 1) {
+            $this->_master(0)->beginTransaction();
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function commit()
+    {
+        if ($this->_transactions == 1) {
+            $this->_master(0)->commit();
+        }
+        --$this->_transactions;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function rollBack()
+    {
+        if ($this->_transactions == 1) {
+            $this->_transactions = 0;
+            $this->_master(0)->rollBack();
+        } else {
+            --$this->_transactions;
         }
     }
 

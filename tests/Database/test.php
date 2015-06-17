@@ -11,9 +11,65 @@ DB::config(array(
     'username' => 'root'
 ));
 
+function a()
+{
+    DB::beginTransaction();
+    try {
+        DB::insert('data_test', array(
+            'title' => 'tttt1',
+            'content' => 'ppppp1',
+            'tt' => 100
+        ));
+        b();
+        DB::commit();
+    } catch(Exception $e) {
+        DB::rollBack();
+        throw $e;
+    }
+}
+
+function b()
+{
+    DB::beginTransaction();
+    try {
+        DB::insert('data_test', array(
+            'title' => 'tttt2',
+            'content' => 'pppp2',
+            'tt' => 100
+        ));
+        //throw new Exception('test');
+        DB::commit();
+    } catch(Exception $e) {
+        DB::rollBack();
+        throw $e;
+    }
+}
+
+DB::beginTransaction();
+
+try {
+
+    DB::insert('data_test', array(
+        'title' => 'tttt0',
+        'content' => 'ppppp0',
+        'tt' => 100
+    ));
+
+    a();
+
+    DB::commit();
+} catch (Exception $e) {
+    DB::rollBack();
+    echo $e->getMessage();
+}
+
+
+
+/*
 DB::update('data_test', array(
     'tt' => DB::express('tt+1')
-), 'id=11');
+), 'id in?', [9,10]);
+*/
 
 
 $xhprof_data = xhprof_disable();

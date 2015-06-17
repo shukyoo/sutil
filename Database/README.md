@@ -1,4 +1,4 @@
-h# Sutile\Database
+# Sutile\Database
 This is a light database component based on PDO;
 It support multiple database;
 It support multiple master/slave mode;
@@ -89,6 +89,12 @@ DB::insert('users', array(
 DB::update('users', ['name' => 'hello'], array(
     'id' => 1
 ));
+
+// with increment
+DB::update('users', array(
+    'name' => 'hello',
+    'age' => DB::express('age+1')
+), 'id=1');
 ```
 
 ### Delete
@@ -96,7 +102,7 @@ DB::update('users', ['name' => 'hello'], array(
 DB::delete('users', 'id=?', 1);
 ```
 
-[More about where clause](#where)
+[More about where clause](#where-clause)
 
 
 
@@ -108,6 +114,7 @@ DB::transaction(function($query){
     $query->update(...);
 });
 
+
 // Begin and commit
 $query = DB::getQuery();
 $query->beginTransaction();
@@ -117,6 +124,24 @@ try {
     $query->commit();
 } catch(Exception $e) {
     $query->rollBack();
+    throw $e;
+}
+
+
+// Nest Transaction
+DB::beginTransaction();
+try {
+    
+    DB::transaction(function($query){
+        
+        $query->transaction(function($query){
+            ....
+        });
+
+    });
+
+} catch (Exception $e) {
+    DB::rollBack();
 }
 
 ```
@@ -183,6 +208,21 @@ DB::config(array(
 ));
 ```
 
+### multiple masters and multiple slaves
+```php
+DB::config(array(
+    'driver' => 'mysql',
+    'masters' => array(
+        ['dbname' => 'ss1', 'username' => 'dev1'],
+        ['dbname' => 'ss2', 'username' => 'dev2']
+    ),
+    'slaves' => array(
+        ['dbname' => 'ss1', 'username' => 'dev1'],
+        ['dbname' => 'ss2', 'username' => 'dev2']
+    )
+));
+```
+
 ### multiple database with master/slave mode
 ```php
 DB::config(
@@ -203,3 +243,76 @@ DB::config(
 
 
 ## Where Clause
+=?, >=?, <=?, !=?
+like?, llike?, rlike?
+in?, notin?
+between?
+
+['a'=>1, 'b'=>2] // and
+['a'=>1, 'or b'=>2] // or
+[['a'=>1, 'or b'=>2], ['c'=>3, 'or d'=>4]] // group and
+['a'=>1, 'or'=>['b'=>2, 'c'=>3]] // group or
+
+### examples
+```php
+DB::update('users', [], 'id=1');
+
+DB::update('users', [], 'id=?', 1);
+
+DB::update('users', [], 'id in?', [1,2,3]);
+
+DB::update('users', [], 'id=:id', [':id' => 1]);
+
+DB::update('users', [], array(
+    'id' => 1
+));
+
+DB::update('users', [], array(
+    'name like?' => 'test',
+    'age>=?' => 20
+));
+
+DB::update('users', [], array(
+    'name llike?' => 'test'
+));
+
+DB::update('users', [], array(
+    'name rlike?' => 'test'
+));
+
+DB::update('users', [], array(
+    'age in?' => [22, 23, 24]
+));
+
+DB::update('users', [], array(
+    'age notin?' => [22, 23, 24]
+));
+
+DB::update('users', [], array(
+    'age between?' => [22, 30]
+));
+
+DB::update('users', [], array(
+    'id=?' => 1, 'or id=?' => 2
+));
+
+DB::update('users', [], array(
+    'id=?' => 1, 'or' => ['gender' => 'male', 'age<?' => 10]
+));
+
+DB::update('users', [], array(
+    ['age>?' => 20, 'or gender' => 'male'],
+    ['age<?' => 10, 'or gender!=?' => 'female']
+));
+
+DB::update('users', [], array(
+    'age in?' => function($query){
+        $sql = 'SELECT age FROM test WHERE xx="xx"';
+        return $query->fetchCol($sql);
+    }
+));
+
+DB::update('users', [], function(){
+    return 'id=1';
+});
+```
