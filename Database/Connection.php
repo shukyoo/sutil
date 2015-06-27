@@ -5,15 +5,15 @@ use PDO;
 class Connection implements ConnectionInterface
 {
     protected $_master_configs = [];
-    protected $_master_adapters = [];
     protected $_master_pdos = [];
+    protected $_master_index = 0;
 
     protected $_slave_configs = [];
-    protected $_slave_adapters = [];
     protected $_slave_pdos = [];
+    protected $_slave_index = 0;
 
     protected $_driver = '';
-    protected $_transactions = 0;
+
 
     public function __construct(array $config)
     {
@@ -38,29 +38,19 @@ class Connection implements ConnectionInterface
         if (empty($this->_master_configs)) {
             throw new \Exception('Master database config is empty');
         }
+
+        // random of the index for the pdo instance
+        $master_count = count($this->_master_configs);
+        if ($master_count > 1) {
+            $this->_master_index = mt_rand(0, $master_count - 1);
+        }
+
+        $slave_count = count($this->_slave_configs);
+        if ($slave_count > 1) {
+            $this->_slave_index = mt_rand(0, $slave_count - 1);
+        }
     }
 
-    /**
-     * @return \Sutil\Database\Adapters\AdapterInterface
-     */
-    protected function _masterAdapter($index = 0)
-    {
-        if (!isset($this->_master_adapters[$index])) {
-            $this->_master_adapters[$index] = $this->_adapter($this->_master_configs[$index]);
-        }
-        return $this->_master_adapters[$index];
-    }
-
-    /**
-     * @return \Sutil\Database\Adapters\AdapterInterface
-     */
-    protected function _slaveAdapter($index = 0)
-    {
-        if (!isset($this->_slave_adapters[$index])) {
-            $this->_slave_adapters[$index] = $this->_adapter($this->_slave_configs[$index]);
-        }
-        return $this->_slave_adapters[$index];
-    }
 
     protected function _adapter($config)
     {
@@ -72,98 +62,28 @@ class Connection implements ConnectionInterface
     }
 
     /**
-     * @return PDO
+     * {@inheritDoc}
      */
-    protected function _master($index = null)
+    public function master()
     {
-        null === $index && $index = $this->_index(count($this->_master_configs));
-        if (!isset($this->_master_pdos[$index])) {
-            $this->_master_pdos[$index] = $this->_masterAdapter($index)->connect();
+        if (!isset($this->_master_pdos[$this->_master_index])) {
+            $this->_master_pdos[$this->_master_index] = $this->_adapter($this->_master_configs[$this->_master_index])->connect();
         }
-        return $this->_master_pdos[$index];
+        return $this->_master_pdos[$this->_master_index];
     }
 
     /**
-     * @return PDO
+     * {@inheritDoc}
      */
-    protected function _slave($index = null)
+    public function slave()
     {
         if (empty($this->_slave_configs)) {
-            return $this->_master($index);
+            return $this->master();
         }
-        null === $index && $index = $this->_index(count($this->_slave_configs));
-        if (!isset($this->_slave_pdos[$index])) {
-            $this->_slave_pdos[$index] = $this->_slaveAdapter($index)->connect();
+        if (!isset($this->_slave_pdos[$this->_slave_index])) {
+            $this->_slave_pdos[$this->_slave_index] = $this->_adapter($this->_slave_configs[$this->_slave_index])->connect();
         }
-        return $this->_slave_pdos[$index];
-    }
-
-    /**
-     * Get random index,for multi slaves/masters random selection
-     * @param int $count
-     * @return int
-     */
-    protected function _index($count)
-    {
-        return ($count > 1) ? mt_rand(0, $count - 1) : 0;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function prepare($sql)
-    {
-        $sql = trim($sql);
-        if (stripos($sql, 'SELECT') === 0) {
-            return $this->_slave()->prepare($sql);
-        } else {
-            // This index for separated transactions, ensure it's in same pdo instance
-            $index = $this->_transactions > 0 ? 0 : null;
-            return $this->_master($index)->prepare($sql);
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function beginTransaction()
-    {
-        ++$this->_transactions;
-        if ($this->_transactions == 1) {
-            $this->_master(0)->beginTransaction();
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function commit()
-    {
-        if ($this->_transactions == 1) {
-            $this->_master(0)->commit();
-        }
-        --$this->_transactions;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function rollBack()
-    {
-        if ($this->_transactions == 1) {
-            $this->_transactions = 0;
-            $this->_master(0)->rollBack();
-        } else {
-            --$this->_transactions;
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function getPDO()
-    {
-        return $this->_master();
+        return $this->_slave_pdos[$this->_slave_index];
     }
 
     /**
@@ -171,10 +91,11 @@ class Connection implements ConnectionInterface
      */
     public function quoteIdentifier($identifier)
     {
+        $adapter = '\\Sutil\\Database\\Adapters\\'. ucfirst($this->_driver);
         $segments = explode('.', $identifier);
         $quoted = [];
         foreach ($segments as $k => $seg) {
-            $quoted[] = $this->_masterAdapter()->quoteIdentifier($seg);
+            $quoted[] = $adapter::quoteIdentifier($seg);
         }
         return implode('.', $quoted);
     }

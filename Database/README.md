@@ -146,17 +146,25 @@ try {
 
 ```
 
+### connect other database
+```php
+DB::connect('db2')->fetchAll($sql);
+DB::connect('db3')->insert(...);
+```
+
+
+
 ## Config
 
 ### Mysql config keys
-| Default Key  | Default Value |
+|  Key  | Value |
 | ------------- | ------------- |
 | driver | *required |
-| host  | 127.0.0.1  |
+| host  | 127.0.0.1 (default)  |
 | dbname | *required |
 | username | [optional] |
 | password | [optional] |
-| charset  | utf8  |
+| charset  | utf8 (default)  |
 | options | [optional] (array of PDO options) |
  
 

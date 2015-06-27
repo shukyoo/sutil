@@ -7,29 +7,11 @@ use PDO;
 class Query implements QueryInterface
 {
     protected $_connection = null;
+    protected $_transactions = 0;
 
     public function __construct(ConnectionInterface $connection)
     {
         $this->_connection = $connection;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function prepare($sql, $bind = null)
-    {
-        $stmt = $this->_connection->prepare($sql);
-        $stmt->execute($this->_bind($bind));
-        return $stmt;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function query($sql, $bind = null)
-    {
-        $stmt = $this->_connection->prepare($sql);
-        return $stmt->execute($this->_bind($bind));
     }
 
     /**
@@ -48,98 +30,134 @@ class Query implements QueryInterface
     /**
      * {@inheritDoc}
      */
-    public function lastInsertId()
+    public function select($sql, $bind = null, $fetch_mode = null, $fetch_args = null)
     {
-        return $this->_connection->getPDO()->lastInsertId();
+        $stmt = $this->_connection->slave()->prepare($sql);
+        $stmt->execute($this->_bind($bind));
+        if (null !== $fetch_mode) {
+            $stmt->setFetchMode($fetch_mode, $fetch_args);
+        }
+        return $stmt;
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    public function execute($sql, $bind = null)
+    {
+        return $this->_connection->master()->prepare($sql)->execute($this->_bind($bind));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function lastInsertId()
+    {
+        return $this->_connection->master()->lastInsertId();
+    }
+    
 
     /**
      * {@inheritDoc}
      */
     public function fetchAll($sql, $bind = null)
     {
-        return $this->prepare($sql, $bind)->fetchAll(PDO::FETCH_ASSOC);
+        return $this->select($sql, $bind)->fetchAll(PDO::FETCH_ASSOC);
     }
-    
+
     /**
      * {@inheritDoc}
      */
     public function fetchAllIndexed($sql, $bind = null)
     {
-        return $this->prepare($sql, $bind)->fetchAll(PDO::FETCH_UNIQUE | PDO::FETCH_ASSOC);
+        return $this->select($sql, $bind)->fetchAll(PDO::FETCH_UNIQUE | PDO::FETCH_ASSOC);
     }
-    
+
     /**
      * {@inheritDoc}
      */
     public function fetchAllGrouped($sql, $bind = null)
     {
-        return $this->prepare($sql, $bind)->fetchAll(PDO::FETCH_GROUP | PDO::FETCH_ASSOC);
+        return $this->select($sql, $bind)->fetchAll(PDO::FETCH_GROUP | PDO::FETCH_ASSOC);
     }
-    
+
     /**
      * {@inheritDoc}
      */
     public function fetchAllClass($class, $sql, $bind = null)
     {
-        return $this->prepare($sql, $bind)->fetchAll(PDO::FETCH_CLASS | PDO::FETCH_PROPS_LATE, $class);
+        return $this->select($sql, $bind)->fetchAll(PDO::FETCH_CLASS | PDO::FETCH_PROPS_LATE, $class);
     }
-    
+
     /**
      * {@inheritDoc}
      */
     public function fetchRow($sql, $bind = null)
     {
-        return $this->prepare($sql, $bind)->fetch(PDO::FETCH_ASSOC);
+        return $this->select($sql, $bind)->fetch(PDO::FETCH_ASSOC);
     }
-    
+
     /**
      * {@inheritDoc}
      */
     public function fetchRowClass($class, $sql, $bind = null)
     {
-        $stmt = $this->prepare($sql, $bind);
-        $stmt->setFetchMode(PDO::FETCH_CLASS | PDO::FETCH_PROPS_LATE, $class);
-        return $stmt->fetch();
+        return $this->select($sql, $bind, PDO::FETCH_CLASS | PDO::FETCH_PROPS_LATE, $class)->fetch();
     }
-    
+
     /**
      * {@inheritDoc}
      */
     public function fetchCol($sql, $bind)
     {
-        return $this->prepare($sql, $bind)->fetchAll(PDO::FETCH_COLUMN, 0);
+        return $this->select($sql, $bind)->fetchAll(PDO::FETCH_COLUMN, 0);
     }
-    
+
     /**
      * {@inheritDoc}
      */
     public function fetchPairs($sql, $bind = null)
     {
-        return $this->prepare($sql, $bind)->fetchAll(PDO::FETCH_KEY_PAIR);
+        return $this->select($sql, $bind)->fetchAll(PDO::FETCH_KEY_PAIR);
     }
-    
+
     /**
      * {@inheritDoc}
      */
     public function fetchPairsGrouped($sql, $bind = null)
     {
         $data = [];
-        foreach ($this->prepare($sql, $bind)->fetchAll(PDO::FETCH_NUM) as $row) {
+        foreach ($this->select($sql, $bind)->fetchAll(PDO::FETCH_NUM) as $row) {
             $data[$row[0]] = [$row[1] => $row[2]];
         }
         return $data;
     }
-    
+
     /**
      * {@inheritDoc}
      */
     public function fetchOne($sql, $bind = null)
     {
-        return $this->prepare($sql, $bind)->fetchColumn(0);
+        return $this->select($sql, $bind)->fetchColumn(0);
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    public function exists($table, $where = null, $where_bind = null)
+    {
+        return (bool)$this->count($table, $where, $where_bind);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function count($table, $where = null, $where_bind = null)
+    {
+        $where = empty($where) ? '' : " WHERE {$this->_where($where, $where_bind, $bind)}";
+        $sql = "SELECT COUNT(*) FROM {$this->_quoteIdentifier($table)}{$where}";
+        return $this->fetchOne($sql, $bind);
+    }
     
     /**
      * {@inheritDoc}
@@ -154,7 +172,7 @@ class Query implements QueryInterface
             $vals[] = '?';
         }
         $sql = "INSERT INTO " . $this->_quoteIdentifier($table) . ' (' . implode(', ', $cols) . ') VALUES (' . implode(', ', $vals) . ')';
-        return $this->query($sql, array_values($data));
+        return $this->execute($sql, array_values($data));
     }
     
     /**
@@ -176,7 +194,7 @@ class Query implements QueryInterface
         $data = array_values($data);
         $where = empty($where) ? '' : " WHERE {$this->_where($where, null, $data, $where_bind)}";
         $sql = "UPDATE {$this->_quoteIdentifier($table)} SET ". implode(', ', $set) . $where;
-        return $this->query($sql, $data);
+        return $this->execute($sql, $data);
     }
 
     /**
@@ -184,9 +202,7 @@ class Query implements QueryInterface
      */
     public function save($table, $data, $where = null, $where_bind = null)
     {
-        $where = empty($where) ? '' : " WHERE {$this->_where($where, null, $where_bind)}";
-        $sql = "SELECT COUNT(*) FROM {$this->_quoteIdentifier($table)}{$where}";
-        if ($this->fetchOne($sql, $where_bind)) {
+        if ($this->exists($table, $where, $where_bind)) {
             return $this->update($table, $data, $where, $where_bind);
         } else {
             return $this->insert($table, $data);
@@ -201,7 +217,7 @@ class Query implements QueryInterface
         $bind = [];
         $where = empty($where) ? '' : " WHERE {$this->_where($where, null, $bind, $where_bind)}";
         $sql = "DELETE FROM {$this->_quoteIdentifier($table)}{$where}";
-        return $this->query($sql, $bind);
+        return $this->execute($sql, $bind);
     }
     
     /**
@@ -221,31 +237,41 @@ class Query implements QueryInterface
 
         return $result;
     }
-    
+
     /**
      * {@inheritDoc}
      */
     public function beginTransaction()
     {
-        $this->_connection->beginTransaction();
+        ++$this->_transactions;
+        if ($this->_transactions == 1) {
+            $this->_connection->master()->beginTransaction();
+        }
     }
-    
+
     /**
      * {@inheritDoc}
      */
     public function commit()
     {
-        $this->_connection->commit();
+        if ($this->_transactions == 1) {
+            $this->_connection->master()->commit();
+        }
+        --$this->_transactions;
     }
-    
+
     /**
      * {@inheritDoc}
      */
     public function rollBack()
     {
-        $this->_connection->rollBack();
+        if ($this->_transactions == 1) {
+            $this->_connection->master()->rollBack();
+            $this->_transactions = 0;
+        } else {
+            --$this->_transactions;
+        }
     }
-
 
     /**
      * where clause

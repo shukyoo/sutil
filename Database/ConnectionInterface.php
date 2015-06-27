@@ -3,36 +3,17 @@
 interface ConnectionInterface
 {
     /**
-     * Prepare statement
-     * Auto detect "select" sql, for use slave db
-     *
-     * @param string $sql
-     * @return \PDOStatement
+     * Get a master PDO instance
+     * @return \PDO
      */
-    public function prepare($sql);
+    public function master();
 
     /**
-     * Start a new database transaction.
-     * @return void
+     * Get a slave PDO instance
+     * @return \PDO
      */
-    public function beginTransaction();
-
-    /**
-     * Commit the active database transaction.
-     * @return void
-     */
-    public function commit();
-
-    /**
-     * Rollback the active database transaction.
-     * @return void
-     */
-    public function rollBack();
-
-    /**
-     * @return \PDO the master one
-     */
-    public function getPDO();
+    public function slave();
+    
 
     /**
      * @param string $identifier

@@ -29,11 +29,11 @@ class DB
      * Connect specified database
      *
      * @param string $name
-     * @return Query
+     * @return ConnectionInterface
      */
     public static function connect($name = null)
     {
-        return self::getQuery($name);
+        return self::connection($name);
     }
 
     /**
@@ -43,7 +43,7 @@ class DB
      * @return ConnectionInterface
      * @throws \Exception
      */
-    public static function getConnection($name = null)
+    public static function connection($name = null)
     {
         $name || $name = '_';
         if (!isset(self::$_connections[$name])) {
@@ -62,27 +62,25 @@ class DB
         return self::$_connections[$name];
     }
 
-
     /**
      * @param null|string $name
      * @return QueryInterface
      */
-    public static function getQuery($name = null)
+    public static function query($name = null)
     {
         $name || $name = '_';
         if (!isset(self::$_queries[$name])) {
-            self::$_queries[$name] = new Query(self::getConnection($name));
+            self::$_queries[$name] = new Query(self::connection($name));
         }
         return self::$_queries[$name];
     }
 
-
     /**
-     * Static call query method
+     * Static call connection method
      */
     public static function __callStatic($method, $args)
     {
-        return call_user_func_array([self::getQuery(), $method], $args);
+        return call_user_func_array([self::query(), $method], $args);
     }
 
     /**
