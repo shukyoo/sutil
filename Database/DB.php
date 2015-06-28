@@ -8,8 +8,6 @@
 class DB
 {
     protected static $_config = [];
-    protected static $_connections = [];
-    protected static $_queries = [];
 
     public static function config(Array $config)
     {
@@ -45,8 +43,9 @@ class DB
      */
     public static function connection($name = null)
     {
+        static $connections = [];
         $name || $name = '_';
-        if (!isset(self::$_connections[$name])) {
+        if (!isset($connections[$name])) {
             if ($name != '_') {
                 if (empty(self::$_config[$name])) {
                     throw new \Exception('Invalid connection name');
@@ -57,9 +56,9 @@ class DB
             } else {
                 $config = array_values(self::$_config)[0];
             }
-            self::$_connections[$name] = new Connection($config);
+            $connections[$name] = new Connection($config);
         }
-        return self::$_connections[$name];
+        return $connections[$name];
     }
 
     /**
@@ -68,11 +67,12 @@ class DB
      */
     public static function query($name = null)
     {
+        static $queries = [];
         $name || $name = '_';
-        if (!isset(self::$_queries[$name])) {
-            self::$_queries[$name] = new Query(self::connection($name));
+        if (!isset($queries[$name])) {
+            $queries[$name] = new Query(self::connection($name));
         }
-        return self::$_queries[$name];
+        return $queries[$name];
     }
 
     /**
