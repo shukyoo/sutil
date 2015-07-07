@@ -2,7 +2,7 @@
 
 use Sutil\Cache\Storage\StorageInterface;
 
-class Backend
+class Backend implements BackendInterface
 {
     protected $_storage = null;
     protected $_config = [];
