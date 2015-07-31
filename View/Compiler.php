@@ -52,19 +52,39 @@ class Compiler
         }
 
         $self = $this;
-        return preg_replace_callback('/\{\{\s*(\w+)\s+([\w\/\.]+)\s*\}\}/', function($matches) use($self){
+        $content = file_get_contents($view_file);
+
+        // comment
+        $content = preg_replace_callback('/\{\{\/\/\s*(.+)\s*\}\}/', function($matches){
+            return '<?php // '. $matches[1] .' ?>';
+        }, $content);
+
+        // custom functions (include, escape, trans etc.)
+        $content = preg_replace_callback('/\{\{\s*(\w+)\s+(.+)\s*\}\}/', function($matches) use($self){
             $method = '_parse'. ucfirst(strtolower($matches[1]));
             if (!method_exists($self, $method)) {
                 return $matches[0];
             }
-            return $self->$method($matches[2]);
-        }, file_get_contents($view_file));
+            return $self->$method(trim($matches[2]));
+        }, $content);
+
+        // variable
+        $content = preg_replace_callback('/\{\{\s*(.+)\s*\}\}/', function($matches) {
+            return '<?php echo '. trim($matches[1]) .'; ?>';
+        }, $content);
+
+        return $content;
     }
 
 
     protected function _parseInclude($var)
     {
         return $this->_parse($var);
+    }
+
+    protected function _parseEscape($var)
+    {
+        return '<?php echo htmlspecialchars('.$var.', ENT_QUOTES | ENT_SUBSTITUTE); ?>';
     }
 
     protected function _parseTrans($var)
