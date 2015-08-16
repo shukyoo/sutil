@@ -14,8 +14,8 @@ class View
 {
     protected $_view_path = '';
 
-    // is it in develop mode or not
-    protected $_in_dev = false;
+    // If true, it will always recompile，recommend "true" for development, "false" for production.
+    protected $_recompile = false;
 
     protected $_locale = null;
 
@@ -23,8 +23,8 @@ class View
     {
         $this->_view_path = rtrim($view_path, '/');
 
-        if (isset($options['in_dev'])) {
-            $this->_in_dev = (bool)$options['in_dev'];
+        if (isset($options['recompile'])) {
+            $this->_recompile = (bool)$options['recompile'];
         }
 
         if (isset($options['locale'])) {
@@ -37,7 +37,7 @@ class View
     {
         $compiled_file = $this->getCompiledPath() ."/{$template}.php";
 
-        if (!is_file($compiled_file) || $this->_in_dev) {
+        if (!is_file($compiled_file) || $this->_recompile) {
             $compiler = new Compiler($this);
             $compiler->compile($template);
         }

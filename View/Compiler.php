@@ -55,7 +55,7 @@ class Compiler
         $content = file_get_contents($view_file);
 
         // comment
-        $content = preg_replace_callback('/\{\{\/\/\s*(.+)\s*\}\}/', function($matches){
+        $content = preg_replace_callback('/\{\{\s*\/\/\s*(.+)\s*\}\}/', function($matches){
             return '<?php // '. $matches[1] .' ?>';
         }, $content);
 

@@ -2,7 +2,7 @@
 
 use PDO;
 
-abstract class Adapter
+abstract class AdapterAbstract
 {
     /**
      * The default PDO connection options.

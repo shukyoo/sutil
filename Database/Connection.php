@@ -1,7 +1,5 @@
 <?php namespace Sutil\Database;
 
-use PDO;
-
 class Connection implements ConnectionInterface
 {
     protected $_master_configs = [];
@@ -13,6 +11,8 @@ class Connection implements ConnectionInterface
     protected $_slave_index = 0;
 
     protected $_driver = '';
+
+    protected $_transactions = 0;
 
 
     public function __construct(array $config)
@@ -98,5 +98,109 @@ class Connection implements ConnectionInterface
             $quoted[] = $adapter::quoteIdentifier($seg);
         }
         return implode('.', $quoted);
+    }
+
+    /**
+     * Parse bind as array
+     */
+    protected function _bind($bind)
+    {
+        if ($bind === null) {
+            return null;
+        }
+        is_callable($bind) && $bind = $bind();
+        is_array($bind) || $bind = [$bind];
+        return $bind;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function select($sql, $bind = null, $fetch_mode = null, $fetch_args = null)
+    {
+        $stmt = $this->slave()->prepare($sql);
+        $stmt->execute($this->_bind($bind));
+        if (null !== $fetch_mode) {
+            $stmt->setFetchMode($fetch_mode, $fetch_args);
+        }
+        return $stmt;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function execute($sql, $bind = null)
+    {
+        return $this->master()->prepare($sql)->execute($this->_bind($bind));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function lastInsertId()
+    {
+        return $this->master()->lastInsertId();
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    public function transaction(\Closure $callback)
+    {
+        $this->beginTransaction();
+
+        try {
+            $result = $callback($this);
+            $this->commit();
+        } catch (Exception $e) {
+            $this->rollBack();
+            throw $e;
+        }
+
+        return $result;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function beginTransaction()
+    {
+        ++$this->_transactions;
+        if ($this->_transactions == 1) {
+            $this->master()->beginTransaction();
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function commit()
+    {
+        if ($this->_transactions == 1) {
+            $this->master()->commit();
+        }
+        --$this->_transactions;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function rollBack()
+    {
+        if ($this->_transactions == 1) {
+            $this->master()->rollBack();
+            $this->_transactions = 0;
+        } else {
+            --$this->_transactions;
+        }
+    }
+
+    /**
+     * Simple query
+     */
+    public function query($basic, $cond = null)
+    {
+        return new Query($this, $basic, $cond);
     }
 }

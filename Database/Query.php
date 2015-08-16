@@ -1,275 +1,49 @@
 <?php namespace Sutil\Database;
 
-use Closure;
-use Sutil\Database\ConnectionInterface;
 use PDO;
 
-class Query implements QueryInterface
+class Query
 {
-    protected $_connection = null;
-    protected $_transactions = 0;
+    /**
+     * @var ConnectionInterface
+     */
+    protected $_connection;
 
-    public function __construct(ConnectionInterface $connection)
+    protected $_table = '';
+    protected $_bind = [];
+
+    protected $_sql = '';
+    protected $_where = '';
+    protected $_order = [];
+    protected $_limit = '';
+
+
+
+    public function __construct(ConnectionInterface $connection, $basic = null, $cond = null)
     {
         $this->_connection = $connection;
+        $this->based($basic, $cond);
     }
 
     /**
-     * Parse bind as array
+     * Set base
+     * based('table', ['id' => 1])
+     * based('select * from table where id=?', 1)
      */
-    protected function _bind($bind)
+    public function based($basic, $cond = null)
     {
-        if ($bind === null) {
-            return null;
-        }
-        is_callable($bind) && $bind = $bind();
-        is_array($bind) || $bind = [$bind];
-        return $bind;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function select($sql, $bind = null, $fetch_mode = null, $fetch_args = null)
-    {
-        $stmt = $this->_connection->slave()->prepare($sql);
-        $stmt->execute($this->_bind($bind));
-        if (null !== $fetch_mode) {
-            $stmt->setFetchMode($fetch_mode, $fetch_args);
-        }
-        return $stmt;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function execute($sql, $bind = null)
-    {
-        return $this->_connection->master()->prepare($sql)->execute($this->_bind($bind));
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function lastInsertId()
-    {
-        return $this->_connection->master()->lastInsertId();
-    }
-    
-
-    /**
-     * {@inheritDoc}
-     */
-    public function fetchAll($sql, $bind = null)
-    {
-        return $this->select($sql, $bind)->fetchAll(PDO::FETCH_ASSOC);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function fetchAllIndexed($sql, $bind = null)
-    {
-        return $this->select($sql, $bind)->fetchAll(PDO::FETCH_UNIQUE | PDO::FETCH_ASSOC);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function fetchAllGrouped($sql, $bind = null)
-    {
-        return $this->select($sql, $bind)->fetchAll(PDO::FETCH_GROUP | PDO::FETCH_ASSOC);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function fetchAllClass($class, $sql, $bind = null)
-    {
-        return $this->select($sql, $bind)->fetchAll(PDO::FETCH_CLASS | PDO::FETCH_PROPS_LATE, $class);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function fetchRow($sql, $bind = null)
-    {
-        return $this->select($sql, $bind)->fetch(PDO::FETCH_ASSOC);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function fetchRowClass($class, $sql, $bind = null)
-    {
-        return $this->select($sql, $bind, PDO::FETCH_CLASS | PDO::FETCH_PROPS_LATE, $class)->fetch();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function fetchCol($sql, $bind)
-    {
-        return $this->select($sql, $bind)->fetchAll(PDO::FETCH_COLUMN, 0);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function fetchPairs($sql, $bind = null)
-    {
-        return $this->select($sql, $bind)->fetchAll(PDO::FETCH_KEY_PAIR);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function fetchPairsGrouped($sql, $bind = null)
-    {
-        $data = [];
-        foreach ($this->select($sql, $bind)->fetchAll(PDO::FETCH_NUM) as $row) {
-            $data[$row[0]] = [$row[1] => $row[2]];
-        }
-        return $data;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function fetchOne($sql, $bind = null)
-    {
-        return $this->select($sql, $bind)->fetchColumn(0);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function exists($table, $where = null, $where_bind = null)
-    {
-        return (bool)$this->count($table, $where, $where_bind);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function count($table, $where = null, $where_bind = null)
-    {
-        $where = empty($where) ? '' : " WHERE {$this->_where($where, $where_bind, $bind)}";
-        $sql = "SELECT COUNT(*) FROM {$this->_quoteIdentifier($table)}{$where}";
-        return $this->fetchOne($sql, $bind);
-    }
-    
-    /**
-     * {@inheritDoc}
-     */
-    public function insert($table, $data)
-    {
-        is_callable($data) && $data = $data();
-        $cols = [];
-        $vals = [];
-        foreach ($data as $col => $val) {
-            $cols[] = $this->_quoteIdentifier($col);
-            $vals[] = '?';
-        }
-        $sql = "INSERT INTO " . $this->_quoteIdentifier($table) . ' (' . implode(', ', $cols) . ') VALUES (' . implode(', ', $vals) . ')';
-        return $this->execute($sql, array_values($data));
-    }
-    
-    /**
-     * {@inheritDoc}
-     */
-    public function update($table, $data, $where = null, $where_bind = null)
-    {
-        is_callable($data) && $data = $data();
-        $set = [];
-        foreach ($data as $col => $val) {
-            if ($val instanceof Expression) {
-                $val = $val->getValue();
-                unset($data[$col]);
-            } else {
-                $val = '?';
-            }
-            $set[] = $this->_quoteIdentifier($col) . ' = ' . $val;
-        }
-        $data = array_values($data);
-        $where = empty($where) ? '' : " WHERE {$this->_where($where, null, $data, $where_bind)}";
-        $sql = "UPDATE {$this->_quoteIdentifier($table)} SET ". implode(', ', $set) . $where;
-        return $this->execute($sql, $data);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function save($table, $data, $where = null, $where_bind = null)
-    {
-        if ($this->exists($table, $where, $where_bind)) {
-            return $this->update($table, $data, $where, $where_bind);
+        $basic = trim($basic);
+        if (strpos($basic, ' ')) {
+            $this->_sql = $basic;
         } else {
-            return $this->insert($table, $data);
+            $this->_table = $basic;
         }
-    }
-    
-    /**
-     * {@inheritDoc}
-     */
-    public function delete($table, $where = null, $where_bind = null)
-    {
-        $bind = [];
-        $where = empty($where) ? '' : " WHERE {$this->_where($where, null, $bind, $where_bind)}";
-        $sql = "DELETE FROM {$this->_quoteIdentifier($table)}{$where}";
-        return $this->execute($sql, $bind);
-    }
-    
-    /**
-     * {@inheritDoc}
-     */
-    public function transaction(Closure $callback)
-    {
-        $this->beginTransaction();
-
-        try {
-            $result = $callback($this);
-            $this->commit();
-        } catch (Exception $e) {
-            $this->rollBack();
-            throw $e;
-        }
-
-        return $result;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function beginTransaction()
-    {
-        ++$this->_transactions;
-        if ($this->_transactions == 1) {
-            $this->_connection->master()->beginTransaction();
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function commit()
-    {
-        if ($this->_transactions == 1) {
-            $this->_connection->master()->commit();
-        }
-        --$this->_transactions;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function rollBack()
-    {
-        if ($this->_transactions == 1) {
-            $this->_connection->master()->rollBack();
-            $this->_transactions = 0;
+        if (!is_array($cond)) {
+            $this->_bind = [$cond];
+        } elseif (is_numeric(key($cond))) {
+            $this->_bind = $cond;
         } else {
-            --$this->_transactions;
+            $this->where($cond);
         }
     }
 
@@ -282,50 +56,52 @@ class Query implements QueryInterface
      * where('user_id between?', [1, 5])
      * where('user_id is null')
      * where('user_id is not null')
-     * where('user_id=?', function(){
-     *     return 2;
-     * })
-     * where(function(){
-     *     return ['user_id=?' => 2, 'user_name' => 'test'];
-     * });
      * where(['id=?' => 1, 'or' => ['id' => 2]])
      * where([['id=?' => 1, 'name=?' => 'test'], ['id=?' => 2, 'name=?' => 'ttt']])
      * where(['id=?' => 1, ['name' => 'test']])
      * where(['id' => 1, 'or id' => 2])
      *
-     * @param string|array|closure $cond
+     * @param mixed $cond
      * @param mixed $value
      * @param array &$bind
      * @param array $where_bind [simple mode] elements count should be equal with ? count in $cond
      * @return string
      */
-    protected function _where($cond, $value = null, &$bind = [], $where_bind = null)
+    public function where($cond, $value = null, $co = 'AND')
     {
-        is_callable($cond) && $cond = $cond($this);
-        is_callable($value) && $value = $value($this);
+        $this->_where .= " {$co} " . $this->_whereParse($cond, $value);
+        return $this;
+    }
+
+    public function orWhere($cond, $value = null)
+    {
+        return $this->where($cond, $value, 'OR');
+    }
+
+    /**
+     * Where parse
+     */
+    protected function _whereParse($cond, $value = null)
+    {
         if (is_string($cond)) {
-            if (null !== $value) {
-                return $this->_wherePart($cond, $value, $bind);
-            } elseif (null !== $where_bind) {
-                return $this->_wherePart($cond, $where_bind, $bind);
-            }
-            return $cond;
+            $cond = trim($cond);
+            return (null === $value) ? $cond : $this->_wherePart($cond, $value);
         }
         $where_str = '';
         foreach ($cond as $key => $value) {
-            $uk = strtoupper(trim($key));
+            $jc = strtoupper(trim($key));
             if (is_int($key) && is_array($value)) {
-                $uk = 'AND';
+                $jc = 'AND';
             }
-            if (in_array($uk, ['OR', 'AND'])) {
-                $where_str .= " {$uk} ({$this->_where($value, null, $bind)})";
+            if (in_array($jc, ['OR', 'AND'])) {
+                $where_str .= " {$jc} ({$this->_whereParse($value)})";
             } else {
                 $co = 'AND';
-                if (strpos($uk, 'OR ')) {
+                if (strpos($jc, 'OR ')) {
                     $co = 'OR';
-                    $key = str_replace('OR ', '', $key);
+                    $key = str_ireplace('OR ', '', $key);
                 }
-                $where_str .= " {$co} {$this->_wherePart($key, $value, $bind)}";
+                $where_str .= " {$co} {$this->_wherePart(trim($key), $value)}";
             }
         }
         return preg_replace('/^(AND|OR)\s+(.*)$/i', '\\2', trim($where_str));
@@ -337,48 +113,53 @@ class Query implements QueryInterface
      * ('id in?', [1,2])
      * in, notin, between, like, llike, rlike
      */
-    protected function _wherePart($cond, $value, &$bind = [])
+    protected function _wherePart($cond, $value)
     {
-        strpos($cond, '?') || $cond = "{$cond}=?";
-        preg_match('/(\w+)(\s+[\w]+|\s*[!=><]+)\s*\?\s*/', $cond, $matches);
-        if (empty($matches[2])) {
-            throw new \Exception('Invalid where condition');
+        if (!strpos($cond, '?')) {
+            $field = trim($cond);
+            $opt = is_array($value) ? 'in' : '=';
+        } else {
+            preg_match('/^(\w+)(\s+[\w]+|\s*[!=><]+)\s*\?$/', $cond, $matches);
+            if (empty($matches[2])) {
+                throw new \Exception('Invalid where clause');
+            }
+            $field = $matches[1];
+            $opt = strtolower(trim($matches[2]));
         }
-        $field = $this->_quoteIdentifier($matches[1]);
-        $opt = trim($matches[2]);
+        $field = $this->_connection->quoteIdentifier($field);
         $part_str = $field;
         switch ($opt) {
             case 'in':
-                $part_str .= " IN({$this->_inExp($value, $bind)})";
+                $part_str .= " IN({$this->_inExp($value)})";
                 break;
             case 'notin':
-                $part_str .= " NOT IN({$this->_inExp($value, $bind)})";
+                $part_str .= " NOT IN({$this->_inExp($value)})";
                 break;
             case 'between':
-                $bind = array_merge($bind, $value);
+                $this->_bind = array_merge($this->_bind, $value);
                 $part_str .= " BETWEEN ? AND ?";
                 break;
             case 'like':
-                $bind[] = "%{$value}%";
+                $this->_bind[] = "%{$value}%";
                 $part_str .= ' LIKE ?';
                 break;
             case 'llike':
-                $bind[] = "%{$value}";
+                $this->_bind[] = "%{$value}";
                 $part_str .= ' LIKE ?';
                 break;
             case 'rlike':
-                $bind[] = "{$value}%";
+                $this->_bind[] = "{$value}%";
                 $part_str .= ' LIKE ?';
                 break;
             default:
-                $bind[] = $value;
+                $this->_bind[] = $value;
                 $part_str .= "{$opt}?";
                 break;
         }
         return $part_str;
     }
 
-    protected function _inExp($data, &$bind = [])
+    protected function _inExp($data)
     {
         if (is_string($data)) {
             $data = explode(',', $data);
@@ -386,14 +167,269 @@ class Query implements QueryInterface
         $str = '';
         foreach ($data as $v) {
             $str .= '?,';
-            $bind[] = $v;
+            $this->_bind[] = $v;
         }
         return trim($str, ',');
     }
 
 
-    protected function _quoteIdentifier($identifier)
+    /**
+     * orderBy('id', 'DESC')
+     * orderBy(['id' => 'DESC', 'time' => 'ASC'])
+     */
+    public function orderBy($field, $direction = null)
     {
-        return $this->_connection->quoteIdentifier($identifier);
+        if (is_array($field)) {
+            foreach ($field as $k=>$v) {
+                $this->_order[] = "{$k} {$v}";
+            }
+        } elseif (null === $direction) {
+            $this->_order[] = $field;
+        } else {
+            $this->_order[] = "{$field} {$direction}";
+        }
+        return $this;
+    }
+
+    public function orderASC($field)
+    {
+        return $this->orderBy($field, 'ASC');
+    }
+
+    public function orderDESC($field)
+    {
+        return $this->orderBy($field, 'DESC');
+    }
+
+    /**
+     * Query limit set
+     */
+    public function limit($number, $offset = 0)
+    {
+        $this->_limit = (int)$offset .','. (int)$number;
+    }
+
+    /**
+     * @return array, all array with assoc, empty array returned if nothing or false
+     */
+    public function fetchAll()
+    {
+        return $this->_connection->select($this->_sql(), $this->_bind)->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * @return array, fetch all with firest field as indexed key, empty array returned if nothing or false
+     */
+    public function fetchAllIndexed()
+    {
+        return $this->_connection->select($this->_sql(), $this->_bind)->fetchAll(PDO::FETCH_UNIQUE | PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * @return array, fetch all grouped array with first field as keys, empty array returned if nothing or false
+     */
+    public function fetchAllGrouped()
+    {
+        return $this->_connection->select($this->_sql(), $this->_bind)->fetchAll(PDO::FETCH_GROUP | PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * @param string|object $class
+     * @return array, return array of requested class with mapped data, empty array returned if nothing or false
+     */
+    public function fetchAllClass($class)
+    {
+        return $this->_connection->select($this->_sql(), $this->_bind)->fetchAll(PDO::FETCH_CLASS | PDO::FETCH_PROPS_LATE, $class);
+    }
+
+    /**
+     * @return array, one row array with assoc, empty array returned if nothing or false
+     */
+    public function fetchRow()
+    {
+        return $this->_connection->select($this->_sql(), $this->_bind)->fetch(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * @param string|object $class
+     * @return object|false, return instance of the class with mapped data, false returned if nothing or false
+     */
+    public function fetchRowClass($class)
+    {
+        return $this->_connection->select($this->_sql(), $this->_bind, PDO::FETCH_CLASS | PDO::FETCH_PROPS_LATE, $class)->fetch();
+    }
+
+    /**
+     * @return array return first column array, empty array returned if nothing or false
+     */
+    public function fetchCol()
+    {
+        return $this->_connection->select($this->_sql(), $this->_bind)->fetchAll(PDO::FETCH_COLUMN, 0);
+    }
+
+    /**
+     * @return array return pairs of first column as Key and second column as Value, empty array returned if nothing or false
+     */
+    public function fetchPairs()
+    {
+        return $this->_connection->select($this->_sql(), $this->_bind)->fetchAll(PDO::FETCH_KEY_PAIR);
+    }
+
+    /**
+     * @return array, return grouped pairs of K/V with first field as keys of grouped array, empty array returned if nothing of false
+     */
+    public function fetchPairsGrouped()
+    {
+        $data = [];
+        foreach ($this->_connection->select($this->_sql(), $this->_bind)->fetchAll(PDO::FETCH_NUM) as $row) {
+            $data[$row[0]] = [$row[1] => $row[2]];
+        }
+        return $data;
+    }
+
+    /**
+     * @return mixed, return one column value, false returned if nothing or false
+     */
+    public function fetchOne()
+    {
+        return $this->_connection->select($this->_sql(), $this->_bind)->fetchColumn(0);
+    }
+
+    /**
+     * @return int，count of records
+     */
+    public function count()
+    {
+        $sql = 'SELECT COUNT(*) FROM '. $this->_table() . $this->_where();
+        return $this->_connection->select($sql)->fetchColumn(0);
+    }
+
+    /**
+     * @return bool，check if exists
+     */
+    public function exists()
+    {
+        return (bool)$this->count();
+    }
+
+    /**
+     * Insert data
+     * @param $data
+     * @return bool
+     */
+    public function insert($data)
+    {
+        is_callable($data) && $data = $data();
+        $cols = [];
+        $vals = [];
+        foreach ($data as $col => $val) {
+            $cols[] = $this->_connection->quoteIdentifier($col);
+            $vals[] = '?';
+        }
+        $sql = 'INSERT INTO ' . $this->_table() .' (' . implode(', ', $cols) . ') VALUES (' . implode(', ', $vals) . ')';
+        return $this->_connection->execute($sql, array_values($data));
+    }
+
+    /**
+     * Update data
+     * @param $data
+     * @return bool
+     */
+    public function update($data)
+    {
+        is_callable($data) && $data = $data();
+        $set = [];
+        foreach ($data as $col => $val) {
+            if ($val instanceof Expression) {
+                $val = $val->getValue();
+                unset($data[$col]);
+            } else {
+                $val = '?';
+            }
+            $set[] = $this->_connection->quoteIdentifier($col) . ' = ' . $val;
+        }
+        $this->_bind = array_merge(array_values($data), $this->_bind);
+        $sql = "UPDATE {$this->_table()} SET ". implode(', ', $set) . $this->_where();
+        return $this->_connection->execute($sql, $this->_bind);
+    }
+
+    /**
+     * Update if exists otherwise insert
+     * @return bool
+     */
+    public function save($data)
+    {
+        if ($this->exists()) {
+            return $this->update($data);
+        } else {
+            return $this->insert($data);
+        }
+    }
+
+    /**
+     * Delete data
+     * @return bool
+     */
+    public function delete()
+    {
+        $sql = "DELETE FROM {$this->_table()}{$this->_where()}";
+        return $this->_connection->execute($sql, $this->_bind);
+    }
+
+
+    /**
+     * Get quoted table
+     */
+    protected function _table()
+    {
+        return $this->_connection->quoteIdentifier($this->_table);
+    }
+
+    /**
+     * Get where
+     */
+    protected function _where()
+    {
+        return $this->_where ? (' WHERE '. trim(substr($this->_where, 4))) : '';
+    }
+
+    /**
+     * Get full sql
+     */
+    protected function _sql()
+    {
+        $sql = $this->_sql;
+
+        if ($this->_where) {
+            if (stripos($sql, ' where ')) {
+                if (stripos($sql, '{where}')) {
+                    $sql = str_replace('{where}', $this->_where, $sql);
+                } else {
+                    $sql .= $this->_where;
+                }
+            } else {
+                $where = trim(substr($this->_where, 4));
+                if (stripos($sql, '{where}')) {
+                    $sql = str_replace('{where}', " WHERE {$where}", $sql);
+                } else {
+                    $sql .= " WHERE {$where}";
+                }
+            }
+        }
+
+        if (!empty($this->_order)) {
+            $order = implode(',', $this->_order);
+            if (stripos($sql, '{order}')) {
+                $sql = str_replace('{order}', " ORDER BY {$order}", $sql);
+            } else {
+                $sql .= " ORDER BY {$order}";
+            }
+        }
+
+        if ($this->_limit) {
+            $sql .= " LIMIT {$this->_limit}";
+        }
+
+        return $sql;
     }
 }

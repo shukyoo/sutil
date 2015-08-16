@@ -62,25 +62,11 @@ class DB
     }
 
     /**
-     * @param null|string $name
-     * @return QueryInterface
-     */
-    public static function query($name = null)
-    {
-        static $queries = [];
-        $name || $name = '_';
-        if (!isset($queries[$name])) {
-            $queries[$name] = new Query(self::connection($name));
-        }
-        return $queries[$name];
-    }
-
-    /**
      * Static call connection method
      */
     public static function __callStatic($method, $args)
     {
-        return call_user_func_array([self::query(), $method], $args);
+        return call_user_func_array([self::connection(), $method], $args);
     }
 
     /**

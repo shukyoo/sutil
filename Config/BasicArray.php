@@ -1,14 +1,16 @@
 <?php namespace Sutil\Config;
 
-class Config
+class BasicArray
 {
-    /**
-     * Load data or the file path of the data
-     * @param array|string $val
-     */
-    public static function load($val)
-    {
+    protected static $_pool = [];
 
+    /**
+     * Load data
+     * @param array $val
+     */
+    public static function load(array $pool)
+    {
+        self::$_pool = $pool;
     }
 
     /**
@@ -17,7 +19,7 @@ class Config
      */
     public static function get($key, $default = null)
     {
-
+        return isset(self::$_pool[$key]) ? self::$_pool[$key] : $default;
     }
 
     /**
@@ -26,7 +28,7 @@ class Config
      */
     public static function set($key, $value)
     {
-
+        self::$_pool[$key] = $value;
     }
 
     /**
@@ -35,7 +37,7 @@ class Config
      */
     public static function has($key)
     {
-
+        return isset(self::$_pool[$key]);
     }
 
     /**
@@ -43,6 +45,6 @@ class Config
      */
     public static function all()
     {
-
+        return self::$_pool;
     }
 }

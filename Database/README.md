@@ -324,3 +324,12 @@ DB::update('users', [], function(){
     return 'id=1';
 });
 ```
+
+
+DB::fetchOne($sql);
+DB::execute($sql);
+DB::table('article')->insert($data);
+DB::table('article')->where('id', 1)->update($data);
+DB::table('article')->where()->fetchAll();
+
+$sql = 'SELECT id, name FROM users WHERE cid=?' . ' AND bid=?' . 'ORDER BY id DESC'. LIMIT 0, 100;

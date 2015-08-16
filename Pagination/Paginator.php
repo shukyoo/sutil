@@ -4,6 +4,10 @@ use Sutil\Pagination\Style\StyleInterface;
 
 class Paginator
 {
+    const DEFAULT_PER_PAGE = 20;
+    const DEFAULT_PAGE_RANGE = 10;
+    const DEFAULT_STYLE = 'sliding';
+
     protected $_current_page;
     protected $_per_page;
     protected $_item_count;
@@ -18,11 +22,11 @@ class Paginator
     /**
      * @param $item_count
      * @param int $current_page
-     * @param int $per_page
+     * @param array $options per_page default 20, page_range default 10, style default 'sliding'
      */
-    public function __construct($item_count, $current_page = 1, $per_page = 20, $page_range = 10, $style = 'sliding')
+    public function __construct($item_count, $current_page = 1, $options = null)
     {
-        $this->_per_page = (int)$per_page;
+        $this->_per_page = empty($options['per_page']) ? self::DEFAULT_PER_PAGE : (int)$options['per_page'];
         $this->_item_count = (int)$item_count;
         $this->_page_count = ceil($this->_item_count / $this->_per_page);
 
@@ -34,6 +38,8 @@ class Paginator
         }
         $this->_current_page = $current_page;
 
+        $page_range = empty($options['page_range']) ? self::DEFAULT_PAGE_RANGE : (int)$options['page_range'];
+        $style = empty($options['style']) ? self::DEFAULT_STYLE : trim($options['style']);
         $this->setPageRange($page_range);
         $this->setStyle($style);
     }
