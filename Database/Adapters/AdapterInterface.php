@@ -13,5 +13,5 @@ interface AdapterInterface
      * @param string $identifier
      * @return string
      */
-    public static function quoteIdentifier($identifier);
+    public function quoteIdentifier($identifier);
 }

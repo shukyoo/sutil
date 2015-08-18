@@ -432,4 +432,27 @@ class Query
 
         return $sql;
     }
+
+
+    public function __set($key, $value)
+    {
+        $this->_where[$key] = $value;
+    }
+
+
+
+    /**
+     * @param string $identifier
+     * @return string
+     */
+    public function quoteIdentifier($identifier)
+    {
+        $adapter = '\\Sutil\\Database\\Adapters\\'. ucfirst($this->_driver);
+        $segments = explode('.', $identifier);
+        $quoted = [];
+        foreach ($segments as $k => $seg) {
+            $quoted[] = $adapter::quoteIdentifier($seg);
+        }
+        return implode('.', $quoted);
+    }
 }

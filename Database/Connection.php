@@ -86,19 +86,6 @@ class Connection implements ConnectionInterface
         return $this->_slave_pdos[$this->_slave_index];
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    public function quoteIdentifier($identifier)
-    {
-        $adapter = '\\Sutil\\Database\\Adapters\\'. ucfirst($this->_driver);
-        $segments = explode('.', $identifier);
-        $quoted = [];
-        foreach ($segments as $k => $seg) {
-            $quoted[] = $adapter::quoteIdentifier($seg);
-        }
-        return implode('.', $quoted);
-    }
 
     /**
      * Parse bind as array
@@ -198,8 +185,11 @@ class Connection implements ConnectionInterface
 
     /**
      * Simple query
+     * @param string $basic  table | sql
+     * @param mixed $cond  if basic is table then cond could be where clause, if basic is sql then the cond could be bind value or where clause
+     * @return Query
      */
-    public function query($basic, $cond = null)
+    public function query($basic = null, $cond = null)
     {
         return new Query($this, $basic, $cond);
     }

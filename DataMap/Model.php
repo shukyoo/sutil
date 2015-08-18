@@ -2,40 +2,37 @@
 
 abstract class Model
 {
-    protected $_attributes = [];
-
-    public function __construct(array $attributes = [])
+    public function __construct(array $data = [])
     {
-        foreach ($attributes as $k=>$v) {
-            $this->setAttribute($k, $v);
+        foreach ($data as $k=>$v) {
+            $this->setProperty($k, $v);
         }
     }
 
-    public function setAttribute($key, $value)
+    public function setProperty($key, $value)
     {
         $method = 'set'. $this->_mutateMethod($key);
         if (method_exists($this, $method)) {
             $value = $this->$method($value);
         }
-        $this->_attributes[$key] = $value;
+        $this->$key = $value;
     }
 
-    public function getAttribute($key)
+    public function getProperty($key)
     {
         $method = 'get'. $this->_mutateMethod($key);
         if (method_exists($this, $method)) {
             return $this->$method();
         }
-        return isset($this->_attributes[$key]) ? $this->_attributes[$key] : null;
+        return $this->$key;
     }
 
-
     /**
-     * Set Attribute magically
+     * Set property magically
      */
     public function __set($key, $value)
     {
-        $this->setAttribute($key, $value);
+        $this->setProperty($key, $value);
     }
 
     /**
@@ -43,7 +40,7 @@ abstract class Model
      */
     public function __get($key)
     {
-        return $this->getAttribute($key);
+        return $this->getProperty($key);
     }
 
     /**

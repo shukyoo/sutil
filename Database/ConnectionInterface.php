@@ -13,13 +13,6 @@ interface ConnectionInterface
      * @return \PDO
      */
     public function slave();
-    
-
-    /**
-     * @param string $identifier
-     * @return string
-     */
-    public function quoteIdentifier($identifier);
 
     /**
      * Run a select statement against the database.
@@ -69,4 +62,10 @@ interface ConnectionInterface
      * @return void
      */
     public function rollBack();
+
+    /**
+     * @return Query
+     */
+    public function query();
+
 }
