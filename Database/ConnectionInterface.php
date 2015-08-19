@@ -64,8 +64,9 @@ interface ConnectionInterface
     public function rollBack();
 
     /**
-     * @return Query
+     * @param string $identifier
+     * @return string
      */
-    public function query();
+    public function quoteIdentifier($identifier);
 
 }

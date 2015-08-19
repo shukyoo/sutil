@@ -184,13 +184,39 @@ class Connection implements ConnectionInterface
     }
 
     /**
-     * Simple query
-     * @param string $basic  table | sql
-     * @param mixed $cond  if basic is table then cond could be where clause, if basic is sql then the cond could be bind value or where clause
-     * @return Query
+     * @param string $identifier
+     * @return string
      */
-    public function query($basic = null, $cond = null)
+    public function quoteIdentifier($identifier)
     {
-        return new Query($this, $basic, $cond);
+        $adapter = '\\Sutil\\Database\\Adapters\\'. ucfirst($this->_driver);
+        $segments = explode('.', $identifier);
+        $quoted = [];
+        foreach ($segments as $k => $seg) {
+            $quoted[] = $adapter::quoteIdentifier($seg);
+        }
+        return implode('.', $quoted);
+    }
+
+    /**
+     * Query based on table
+     * @param string $table
+     * @param mixed $where
+     * @return Query\Table
+     */
+    public function table($table, $where = null)
+    {
+        return new Query\Table($this, $table, $where);
+    }
+
+    /**
+     * Query based on sql
+     * @param string $sql
+     * @param mixed $bind
+     * @return Query\Sql
+     */
+    public function sql($sql, $bind = null)
+    {
+        return new Query\Sql($this, $sql, $bind);
     }
 }

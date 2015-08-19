@@ -50,7 +50,7 @@ class Mysql extends AdapterAbstract implements AdapterInterface
     /**
      * {@inheritDoc}
      */
-    public function quoteIdentifier($identifier)
+    public static function quoteIdentifier($identifier)
     {
         return '`'.str_replace('`', '``', $identifier).'`';
     }

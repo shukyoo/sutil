@@ -9,6 +9,14 @@ class Query
      */
     protected $_connection;
 
+    protected $_table = '';
+    protected $_bind = [];
+
+    protected $_sql = '';
+    protected $_where = '';
+    protected $_order = [];
+    protected $_limit = '';
+
 
 
     public function __construct(ConnectionInterface $connection, $basic = null, $cond = null)
