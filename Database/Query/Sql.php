@@ -3,57 +3,35 @@
 use Sutil\Database\ConnectionInterface;
 
 
-class Sql implements BuilderInterface
+class Sql extends QueryAbstract
 {
-    /**
-     * @var ConnectionInterface
-     */
-    protected $_connection;
-
     protected $_sql;
+
+    protected $_assign_prepare = [];
+
+    protected $_sql_prepare = [];
 
     protected $_bind_prepare = [];
 
-    protected $_bind = [];
 
-
-    /**
-     * @todo in clause  id in?
-     * @todo assign where clause  ['id' => 1, 'or tt' => 2]
-     */
     public function __construct(ConnectionInterface $connection, $sql, $bind = null)
     {
         $this->_connection = $connection;
         $this->_sql = trim($sql);
 
-        // match bind in order
-        if (strpos($sql, '?') || strpos($sql, '{')) {
-            preg_match_all('/.*(\?|\{\w+\}).*/iU', $sql, $matches);
-            $ph_count = substr_count($sql, '?');
-            if (!empty($matches[1])) {
-                foreach ($matches[1] as $k=>$item) {
-                    if ($item == '?') {
-                        $this->_bind[$k] = is_array($bind) ? array_shift($bind) : $bind;
-                    } else {
-                        $item = trim($item, '{}');
-                        $this->_bind_prepare[$item] = $k;
-                    }
-                }
-            }
-        }
+        // parse sql
+        $this->_parse($sql, $bind);
     }
 
-    public function getConnection()
+    public function testPrepare()
     {
-        return $this->_connection;
-    }
-
-    /**
-     * Assign where
-     */
-    public function assign($var, $state)
-    {
-
+        ksort($this->_sql_prepare);
+        ksort($this->_bind_prepare);
+        echo '<pre>';
+        print_r($this->_sql_prepare);
+        print_r($this->_bind_prepare);
+        print_r($this->_assign_prepare);
+        exit;
     }
 
     /**
@@ -61,39 +39,106 @@ class Sql implements BuilderInterface
      * @param string $var
      * @param string $state
      * @param null $bind
+     * @return Sql
      */
-    public function assignRaw($var, $state, $bind = null)
+    public function assign($var, $state, $bind = null)
     {
-        $this->_sql = str_replace('{'. $var .'}', ' '. trim($state). ' ', $this->_sql);
-        if (null !== $bind && isset($this->_bind_prepare[$var])) {
-            $this->_bind[$this->_bind_prepare[$var]] = $bind;
+        if (isset($this->_assign_prepare[$var])) {
+            $this->_parse($state, $bind, $this->_assign_prepare[$var]);
         }
         return $this;
     }
 
-
     /**
-     * Assign in clause
+     * orderBy('id DESC')
+     * orderBy(['id' => 'DESC', 'time' => 'ASC'])
      */
-    public function assignIn()
+    public function orderBy($clause)
     {
-
+        $str = ' ORDER BY ';
+        if (is_array($clause)) {
+            foreach ($clause as $k=>$v) {
+                $str .= "{$k} {$v},";
+            }
+            $str = rtrim($str, ',');
+        } else {
+            $str .= $clause;
+        }
+        $this->_sql_prepare[] = $str;
+        return $this;
     }
 
-    /**
-     * Assign not in clause
-     */
-    public function assignNotIn()
+    public function orderASC($field)
     {
+        return $this->orderBy("{$field} ASC");
+    }
 
+    public function orderDESC($field)
+    {
+        return $this->orderBy("{$field} DESC");
     }
 
     /**
      * Assign limit
+     * @param string $var
+     * @param int $number
+     * @param int $page
+     * @return Sql
      */
-    public function assignLimit($var, $number, $page = 1)
+    public function limit($number, $page = 1)
     {
+        $page >= 1 || $page = 1;
+        $start = ($page - 1) * $number;
+        $str = " LIMIT {$start},{$number}";
+        $this->_sql_prepare[] = $str;
+        return $this;
+    }
 
+    /**
+     * Parse SQL template
+     * @param $str
+     * @param null $bind
+     * @param array $pre_key
+     */
+    protected function _parse($str, $bind = null, $pre_key = [])
+    {
+        $parts = preg_split('/([\?\#]|\{\w+\})/', $str, null, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
+        foreach ($parts as $k=>$item) {
+
+            // variable
+            if (strpos($item, '{') === 0) {
+                $this->_assign_prepare[trim($item, '{}')] = array_merge($pre_key, [$k]);
+                continue;
+            }
+
+            // for set nested array value
+            $bind_prepare = &$this->_bind_prepare;
+            $sql_prepare = &$this->_sql_prepare;
+            foreach ($pre_key as $i) {
+                $bind_prepare = &$bind_prepare[$i];
+                $sql_prepare = &$sql_prepare[$i];
+            }
+
+            if (null !== $bind) {
+                is_array($bind) || $bind = [$bind];
+            }
+
+            // in param
+            if ($item == '#') {
+                $bind_prepare[$k] = isset($bind[0][0]) ? array_shift($bind) : $bind;
+                $sql_prepare[$k] = implode(',', array_fill(0, count($bind_prepare[$k]), '?'));
+                continue;
+            }
+            // normal param
+            if ($item == '?') {
+                $bind_prepare[$k] = array_shift($bind);
+                $sql_prepare[$k] = '?';
+                continue;
+            }
+
+            // normal string
+            $sql_prepare[$k] = $item;
+        }
     }
 
 
@@ -102,7 +147,12 @@ class Sql implements BuilderInterface
      */
     public function getSql()
     {
-        return preg_replace('/\{\w+\}/', '', $this->_sql);
+        ksort($this->_sql_prepare);
+        $sql = '';
+        array_walk_recursive($this->_sql_prepare, function($item) use (&$sql) {
+            $sql .= $item;
+        });
+        return $sql;
     }
 
     /**
@@ -110,21 +160,11 @@ class Sql implements BuilderInterface
      */
     public function getBind()
     {
-        ksort($this->_bind);
+        ksort($this->_bind_prepare);
         $bind = [];
-        array_walk_recursive($this->_bind, function($item) use (&$bind) {
+        array_walk_recursive($this->_bind_prepare, function($item) use (&$bind) {
             $bind[] = $item;
         });
         return $bind;
-    }
-
-    public function getQuerier()
-    {
-        return new Querier($this);
-    }
-
-    public function __call($method, $args)
-    {
-        return call_user_func_array([$this->getQuerier(), $method], $args);
     }
 }

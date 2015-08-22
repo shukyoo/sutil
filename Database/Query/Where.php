@@ -14,7 +14,7 @@
  * where(['id=?' => 1, ['name' => 'test']])
  * where(['id' => 1, 'or id' => 2])
  */
-class Where
+trait Where
 {
     /**
      * @param mixed $cond

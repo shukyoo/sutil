@@ -1,30 +1,37 @@
 <?php namespace Sutil\Database\Query;
 
-use PDO;
 use Sutil\Database\ConnectionInterface;
 
-class Querier
+abstract class QueryAbstract
 {
     /**
      * @var ConnectionInterface
      */
     protected $_connection;
-    protected $_sql;
-    protected $_bind;
 
-    public function __construct(BuilderInterface $builder)
+    public function getConnection()
     {
-        $this->_connection = $builder->getConnection();
-        $this->_sql = $builder->getSql();
-        $this->_bind = $builder->getBind();
+        return $this->_connection;
     }
 
+    /**
+     * Get final SQL string
+     * @return mixed
+     */
+    abstract public function getSql();
+
+    /**
+     * Get final bind
+     * @return array
+     */
+    abstract public function getBind();
+    
     /**
      * @return array, all array with assoc, empty array returned if nothing or false
      */
     public function fetchAll()
     {
-        return $this->_connection->select($this->_sql, $this->_bind)->fetchAll(PDO::FETCH_ASSOC);
+        return $this->getConnection()->select($this->getSql(), $this->getBind())->fetchAll(PDO::FETCH_ASSOC);
     }
 
     /**
@@ -32,7 +39,7 @@ class Querier
      */
     public function fetchAllIndexed()
     {
-        return $this->_connection->select($this->_sql, $this->_bind)->fetchAll(PDO::FETCH_UNIQUE | PDO::FETCH_ASSOC);
+        return $this->getConnection()->select($this->getSql(), $this->getBind())->fetchAll(PDO::FETCH_UNIQUE | PDO::FETCH_ASSOC);
     }
 
     /**
@@ -40,7 +47,7 @@ class Querier
      */
     public function fetchAllGrouped()
     {
-        return $this->_connection->select($this->_sql, $this->_bind)->fetchAll(PDO::FETCH_GROUP | PDO::FETCH_ASSOC);
+        return $this->getConnection()->select($this->getSql(), $this->getBind())->fetchAll(PDO::FETCH_GROUP | PDO::FETCH_ASSOC);
     }
 
     /**
@@ -49,7 +56,7 @@ class Querier
      */
     public function fetchAllClass($class)
     {
-        return $this->_connection->select($this->_sql, $this->_bind)->fetchAll(PDO::FETCH_CLASS | PDO::FETCH_PROPS_LATE, $class);
+        return $this->getConnection()->select($this->getSql(), $this->getBind())->fetchAll(PDO::FETCH_CLASS | PDO::FETCH_PROPS_LATE, $class);
     }
 
     /**
@@ -57,7 +64,7 @@ class Querier
      */
     public function fetchRow()
     {
-        return $this->_connection->select($this->_sql, $this->_bind)->fetch(PDO::FETCH_ASSOC);
+        return $this->getConnection()->select($this->getSql(), $this->getBind())->fetch(PDO::FETCH_ASSOC);
     }
 
     /**
@@ -66,7 +73,7 @@ class Querier
      */
     public function fetchRowClass($class)
     {
-        return $this->_connection->select($this->_sql, $this->_bind, PDO::FETCH_CLASS | PDO::FETCH_PROPS_LATE, $class)->fetch();
+        return $this->getConnection()->select($this->getSql(), $this->getBind(), PDO::FETCH_CLASS | PDO::FETCH_PROPS_LATE, $class)->fetch();
     }
 
     /**
@@ -74,7 +81,7 @@ class Querier
      */
     public function fetchCol()
     {
-        return $this->_connection->select($this->_sql, $this->_bind)->fetchAll(PDO::FETCH_COLUMN, 0);
+        return $this->getConnection()->select($this->getSql(), $this->getBind())->fetchAll(PDO::FETCH_COLUMN, 0);
     }
 
     /**
@@ -82,7 +89,7 @@ class Querier
      */
     public function fetchPairs()
     {
-        return $this->_connection->select($this->_sql, $this->_bind)->fetchAll(PDO::FETCH_KEY_PAIR);
+        return $this->getConnection()->select($this->getSql(), $this->getBind())->fetchAll(PDO::FETCH_KEY_PAIR);
     }
 
     /**
@@ -91,7 +98,7 @@ class Querier
     public function fetchPairsGrouped()
     {
         $data = [];
-        foreach ($this->_connection->select($this->_sql, $this->_bind)->fetchAll(PDO::FETCH_NUM) as $row) {
+        foreach ($this->getConnection()->select($this->getSql(), $this->getBind())->fetchAll(PDO::FETCH_NUM) as $row) {
             $data[$row[0]] = [$row[1] => $row[2]];
         }
         return $data;
@@ -102,7 +109,7 @@ class Querier
      */
     public function fetchOne()
     {
-        return $this->_connection->select($this->_sql, $this->_bind)->fetchColumn(0);
+        return $this->getConnection()->select($this->getSql(), $this->getBind())->fetchColumn(0);
     }
 
     /**
@@ -110,6 +117,6 @@ class Querier
      */
     public function execute()
     {
-        return $this->_connection->execute($this->_sql, $this->_bind);
+        return $this->getConnection()->execute($this->getSql(), $this->getBind());
     }
 }
