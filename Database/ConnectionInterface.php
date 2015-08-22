@@ -3,6 +3,11 @@
 interface ConnectionInterface
 {
     /**
+     * Get the driver
+     */
+    public function driver();
+
+    /**
      * Get a master PDO instance
      * @return \PDO
      */
@@ -62,11 +67,5 @@ interface ConnectionInterface
      * @return void
      */
     public function rollBack();
-
-    /**
-     * @param string $identifier
-     * @return string
-     */
-    public function quoteIdentifier($identifier);
 
 }

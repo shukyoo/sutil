@@ -1,5 +1,6 @@
 <?php namespace Sutil\Database\Query;
 
+use PDO;
 use Sutil\Database\ConnectionInterface;
 
 abstract class QueryAbstract
@@ -8,6 +9,12 @@ abstract class QueryAbstract
      * @var ConnectionInterface
      */
     protected $_connection;
+
+    protected $_group = '';
+    protected $_order = [];
+    protected $_limit;
+    protected $_offset;
+
 
     public function getConnection()
     {
@@ -25,6 +32,85 @@ abstract class QueryAbstract
      * @return array
      */
     abstract public function getBind();
+
+
+    /**
+     * @return Table
+     */
+    public function group($field, $having = null)
+    {
+        $this->_group = " GROUP BY {$this->_quoteIdentifier($field)}";
+        if ($having) {
+            $this->_group .= " HAVING {$having}";
+        }
+        return $this;
+    }
+
+    protected function _group()
+    {
+        return $this->_group;
+    }
+
+
+    /**
+     * orderBy('id DESC')
+     * orderBy(['id' => 'DESC', 'time' => 'ASC'])
+     * @return Table
+     */
+    public function orderBy($field, $direction = 'ASC')
+    {
+        if (is_array($field)) {
+            foreach ($field as $k=>$v) {
+                $this->_order[] = "{$this->_quoteIdentifier($k)} {$v}";
+            }
+        } else {
+            $this->_order[] = "{$this->_quoteIdentifier($field)} {$direction}";
+        }
+        return $this;
+    }
+
+    public function orderASC($field)
+    {
+        return $this->orderBy($field, 'ASC');
+    }
+
+    public function orderDESC($field)
+    {
+        return $this->orderBy($field, 'DESC');
+    }
+
+    protected function _order()
+    {
+        return empty($this->_order) ? '' : (' ORDER BY '. implode(',', $this->_order));
+    }
+
+    /**
+     * Set limit
+     */
+    public function limit($number, $page = null)
+    {
+        $this->_limit = (int)$number;
+        if ($page > 0) {
+            $this->_offset = ($page - 1) * $this->_limit;
+        }
+        return $this;
+    }
+
+    public function offset($offset)
+    {
+        $this->_offset = (int)$offset;
+        return $this;
+    }
+
+    protected function _limit()
+    {
+        $str = '';
+        if (null !== $this->_limit) {
+            $str = (null === $this->_offset) ? " LIMIT {$this->_offset}" : " LIMIT {$this->_offset},{$this->_limit}";
+        }
+        return $str;
+    }
+
     
     /**
      * @return array, all array with assoc, empty array returned if nothing or false
@@ -119,4 +205,24 @@ abstract class QueryAbstract
     {
         return $this->getConnection()->execute($this->getSql(), $this->getBind());
     }
+    
+    
+    protected function _quoteIdentifier($identifier)
+    {
+        $adapter = '\\Sutil\\Database\\Adapters\\'. ucfirst($this->getConnection()->driver());
+        return $adapter::quoteIdentifier($identifier);
+    }
+    
+    /*
+    protected function _quoteIdentifier($identifier)
+    {
+        $adapter = '\\Sutil\\Database\\Adapters\\'. ucfirst($this->getConnection()->driver());
+        $segments = explode('.', $identifier);
+        $quoted = [];
+        foreach ($segments as $k => $seg) {
+            $quoted[] = $adapter::quoteIdentifier($seg);
+        }
+        return implode('.', $quoted);
+    }
+    */
 }

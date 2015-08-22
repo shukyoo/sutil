@@ -68,13 +68,4 @@ class DB
     {
         return call_user_func_array([self::connection(), $method], $args);
     }
-
-    /**
-     * @param mixed $value
-     * @return Expression
-     */
-    public static function express($value)
-    {
-        return new Expression($value);
-    }
 }

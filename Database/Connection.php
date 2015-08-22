@@ -52,6 +52,18 @@ class Connection implements ConnectionInterface
     }
 
 
+    /**
+     * {@inheritDoc}
+     */
+    public function driver()
+    {
+        return $this->_driver;
+    }
+
+
+    /**
+     * Get adapter
+     */
     protected function _adapter($config)
     {
         $driver = '\\Sutil\\Database\\Adapters\\'. ucfirst($this->_driver);
@@ -184,29 +196,14 @@ class Connection implements ConnectionInterface
     }
 
     /**
-     * @param string $identifier
-     * @return string
-     */
-    public function quoteIdentifier($identifier)
-    {
-        $adapter = '\\Sutil\\Database\\Adapters\\'. ucfirst($this->_driver);
-        $segments = explode('.', $identifier);
-        $quoted = [];
-        foreach ($segments as $k => $seg) {
-            $quoted[] = $adapter::quoteIdentifier($seg);
-        }
-        return implode('.', $quoted);
-    }
-
-    /**
      * Query based on table
      * @param string $table
      * @param mixed $where
      * @return Query\Table
      */
-    public function table($table, $where = null)
+    public function table($table, $where_cond = null, $where_value = null)
     {
-        return new Query\Table($this, $table, $where);
+        return new Query\Table($this, $table, $where_cond, $where_value);
     }
 
     /**

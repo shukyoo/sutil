@@ -49,50 +49,6 @@ class Sql extends QueryAbstract
         return $this;
     }
 
-    /**
-     * orderBy('id DESC')
-     * orderBy(['id' => 'DESC', 'time' => 'ASC'])
-     */
-    public function orderBy($clause)
-    {
-        $str = ' ORDER BY ';
-        if (is_array($clause)) {
-            foreach ($clause as $k=>$v) {
-                $str .= "{$k} {$v},";
-            }
-            $str = rtrim($str, ',');
-        } else {
-            $str .= $clause;
-        }
-        $this->_sql_prepare[] = $str;
-        return $this;
-    }
-
-    public function orderASC($field)
-    {
-        return $this->orderBy("{$field} ASC");
-    }
-
-    public function orderDESC($field)
-    {
-        return $this->orderBy("{$field} DESC");
-    }
-
-    /**
-     * Assign limit
-     * @param string $var
-     * @param int $number
-     * @param int $page
-     * @return Sql
-     */
-    public function limit($number, $page = 1)
-    {
-        $page >= 1 || $page = 1;
-        $start = ($page - 1) * $number;
-        $str = " LIMIT {$start},{$number}";
-        $this->_sql_prepare[] = $str;
-        return $this;
-    }
 
     /**
      * Parse SQL template
@@ -111,7 +67,7 @@ class Sql extends QueryAbstract
                 continue;
             }
 
-            // for set nested array value
+            // Prepare for nested array value set
             $bind_prepare = &$this->_bind_prepare;
             $sql_prepare = &$this->_sql_prepare;
             foreach ($pre_key as $i) {
@@ -152,7 +108,7 @@ class Sql extends QueryAbstract
         array_walk_recursive($this->_sql_prepare, function($item) use (&$sql) {
             $sql .= $item;
         });
-        return $sql;
+        return "{$sql}{$this->_group()}{$this->_order()}{$this->_limit()}";
     }
 
     /**
