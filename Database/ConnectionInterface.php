@@ -68,4 +68,20 @@ interface ConnectionInterface
      */
     public function rollBack();
 
+    /**
+     * Query based on table
+     * @param string $table
+     * @param mixed $where
+     * @return Query\Table
+     */
+    public function table($table, $where_cond = null, $where_value = null);
+
+    /**
+     * Query based on sql
+     * @param string $sql
+     * @param mixed $bind
+     * @return Query\Sql
+     */
+    public function sql($sql, $bind = null);
+
 }
