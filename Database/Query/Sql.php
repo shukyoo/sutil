@@ -23,17 +23,6 @@ class Sql extends QueryAbstract
         $this->_parse($sql, $bind);
     }
 
-    public function testPrepare()
-    {
-        ksort($this->_sql_prepare);
-        ksort($this->_bind_prepare);
-        echo '<pre>';
-        print_r($this->_sql_prepare);
-        print_r($this->_bind_prepare);
-        print_r($this->_assign_prepare);
-        exit;
-    }
-
     /**
      * Assign template
      * @param string $var
@@ -75,8 +64,8 @@ class Sql extends QueryAbstract
                 $sql_prepare = &$sql_prepare[$i];
             }
 
-            if (null !== $bind) {
-                is_array($bind) || $bind = [$bind];
+            if (null !== $bind && !is_array($bind)) {
+                $bind = [$bind];
             }
 
             // in param
