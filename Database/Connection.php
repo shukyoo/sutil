@@ -196,24 +196,10 @@ class Connection implements ConnectionInterface
     }
 
     /**
-     * Query based on table
-     * @param string $table
-     * @param mixed $where
-     * @return Query\Table
+     * {@inheritDoc}
      */
-    public function table($table, $where_cond = null, $where_value = null)
+    public function query($base, $bind = null, $assign = null)
     {
-        return new Query\Table($this, $table, $where_cond, $where_value);
-    }
-
-    /**
-     * Query based on sql
-     * @param string $sql
-     * @param mixed $bind
-     * @return Query\Sql
-     */
-    public function sql($sql, $bind = null)
-    {
-        return new Query\Sql($this, $sql, $bind);
+        return new Query($this, $base, $where_cond, $where_value);
     }
 }

@@ -6,6 +6,7 @@ defined('ST_INT') || define('ST_INT', 12);
 
 class Request
 {
+
     /**
      * Get query params, special charecters will be stripped by default
      * Specify ST_RAW for return raw data

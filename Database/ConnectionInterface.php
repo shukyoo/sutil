@@ -24,7 +24,7 @@ interface ConnectionInterface
      * @param string $sql
      * @param mixed $bind
      * @param int $fetch_mode PDO fetch mode
-     * @return array
+     * @return \PDOStatement
      */
     public function select($sql, $bind = null, $fetch_mode = null, $fetch_args = null);
 
@@ -69,19 +69,12 @@ interface ConnectionInterface
     public function rollBack();
 
     /**
-     * Query based on table
-     * @param string $table
-     * @param mixed $where
-     * @return Query\Table
+     * New query
+     * @param string $base table name or sql
+     * @param mixed $bind for sql
+     * @param array $assign for sql
+     * @return Query
      */
-    public function table($table, $where_cond = null, $where_value = null);
-
-    /**
-     * Query based on sql
-     * @param string $sql
-     * @param mixed $bind
-     * @return Query\Sql
-     */
-    public function sql($sql, $bind = null);
+    public function query($base, $bind = null, $assign = null);
 
 }
