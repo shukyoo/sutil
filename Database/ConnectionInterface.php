@@ -69,12 +69,11 @@ interface ConnectionInterface
     public function rollBack();
 
     /**
-     * New query
+     * Query
      * @param string $base table name or sql
      * @param mixed $bind for sql
-     * @param array $assign for sql
      * @return Query
      */
-    public function query($base, $bind = null, $assign = null);
+    public function query($base, $bind = null);
 
 }

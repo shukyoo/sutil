@@ -68,4 +68,16 @@ class DB
     {
         return call_user_func_array([self::connection(), $method], $args);
     }
+
+
+    /**
+     * For query
+     * @param $base
+     * @param null $bind
+     * @return Query
+     */
+    public static function query($base, $bind = null)
+    {
+        return self::connection()->query($base, $bind);
+    }
 }

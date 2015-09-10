@@ -11,7 +11,7 @@ class Sql
     protected $_bind_prepare = [];
 
 
-    public function __construct($sql, $bind = null, $assign = null)
+    public function __construct($sql, $bind = null)
     {
         $this->_sql = trim($sql);
 
@@ -93,7 +93,7 @@ class Sql
         array_walk_recursive($this->_sql_prepare, function($item) use (&$sql) {
             $sql .= $item;
         });
-        return "{$sql}{$this->_group()}{$this->_order()}{$this->_limit()}";
+        return $sql;
     }
 
     /**

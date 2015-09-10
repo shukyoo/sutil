@@ -111,29 +111,30 @@ class Table
     /**
      * Set limit part
      * @param int $number
-     * @param int $page
+     * @param int $offset
      * @return $this
      */
-    public function limit($number, $page = null)
+    public function limit($number, $offset = null)
     {
         $this->_limit = (int)$number;
-        if ($page > 0) {
-            $this->_offset = ($page - 1) * $this->_limit;
+        if (null !== $offset) {
+            $this->_offset = (int)$offset;
         }
         return $this;
     }
 
     /**
-     * Set offset for limit
-     * @param $offset
+     * Set limit and offset by page
+     * @param int $page
+     * @param int $page_size
      * @return $this
      */
-    public function offset($offset)
+    public function forPage($page, $page_size = 20)
     {
-        $this->_offset = (int)$offset;
+        $this->_limit = (int)$page_size;
+        $this->_offset = ($page - 1) * $this->_limit;
         return $this;
     }
-
 
 
 

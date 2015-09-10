@@ -15,8 +15,19 @@ class Query
      */
     protected $_builder;
 
+    /**
+     * Raw sql for simple and quick process
+     */
+    protected $_sql;
+    protected $_bind;
 
-    public function __construct(ConnectionInterface $connection, $base = null, $bind = null, $assign = null)
+    /**
+     * Common part: limit
+     */
+    protected $_limit = '';
+
+
+    public function __construct(ConnectionInterface $connection, $base = null, $bind = null)
     {
         $this->_connection = $connection;
 
@@ -24,7 +35,7 @@ class Query
         // If no space in $base then use it as table(recommend no space in your tablename)
         // If there has space in your tablename, you should use table($table_name) method
         if (strpos($base, ' ')) {
-            $this->sql($base, $bind, $assign);
+            $this->sql($base, $bind);
         } else {
             $this->table($base);
         }
@@ -36,14 +47,32 @@ class Query
     public function table($table_name)
     {
         $this->_builder = new QueryBuilders\Table($this->_connection, $table_name);
+        return $this;
     }
 
     /**
      * Use sql builder
      */
-    public function sql($sql, $bind = null, $assign = null)
+    public function sql($sql, $bind = null)
     {
-        $this->_builder = new QueryBuilders\Sql($sql, $bind, $assign);
+        // # means IN clause
+        // { means variable assignment
+        if (strpos($sql, '{') || strpos($sql, '#')) {
+            $this->_builder = new QueryBuilders\Sql($sql, $bind);
+        } else {
+            $this->raw($sql, $bind);
+        }
+        return $this;
+    }
+
+    /**
+     * Raw sql
+     */
+    public function raw($sql, $bind = null)
+    {
+        $this->_sql = $sql;
+        $this->_bind = $bind;
+        return $this;
     }
 
     /**
@@ -54,6 +83,19 @@ class Query
         call_user_func_array([$this->_builder, $method], $args);
         return $this;
     }
+
+    /**
+     * Set limit clause by page for common simplify usage
+     * @param int $page
+     * @param int $page_size default 20
+     * @return $this
+     */
+    public function forPage($page, $page_size = 20)
+    {
+        $this->_limit = ' LIMIT '. ($page - 1) * $page_size .','. $page_size;
+        return $this;
+    }
+
 
 
     /**
@@ -279,7 +321,10 @@ class Query
      */
     protected function getSql()
     {
-        return $this->_builder->getSql();
+        if ($this->_sql) {
+            return $this->_sql . $this->_limit;
+        }
+        return ($this->_builder->getSql() . $this->_limit);
     }
 
     /**
@@ -287,6 +332,9 @@ class Query
      */
     protected function getBind()
     {
+        if ($this->_sql) {
+            return $this->_bind;
+        }
         return $this->_builder->getBind();
     }
 }

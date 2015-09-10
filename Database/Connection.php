@@ -198,8 +198,8 @@ class Connection implements ConnectionInterface
     /**
      * {@inheritDoc}
      */
-    public function query($base, $bind = null, $assign = null)
+    public function query($base, $bind = null)
     {
-        return new Query($this, $base, $where_cond, $where_value);
+        return new Query($this, $base, $bind);
     }
 }

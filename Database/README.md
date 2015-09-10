@@ -333,3 +333,16 @@ DB::table('article')->where('id', 1)->update($data);
 DB::table('article')->where()->fetchAll();
 
 $sql = 'SELECT id, name FROM users WHERE cid=?' . ' AND bid=?' . 'ORDER BY id DESC'. LIMIT 0, 100;
+
+
+
+## Query Usage
+```php
+$data = DB::query('article')->where(['user_id' => 3])->fetchAll();
+DB::query('article')->delete(['id' => 3]);
+DB::query('article')->insert(['title' => 'aaaaa', 'content' => 'bbbbb']);
+DB::query('article')->save(['title' => 'aaaaa33', 'content' => 'bbbb33'], ['id' => 13]);
+
+$data = DB::query('select * from article where user_id=?', 3)->fetchAll();
+$data = DB::query('select * from article where id in(#)', [1,2,3])->fetchAll();
+```
