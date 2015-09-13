@@ -37,11 +37,8 @@ class Table
      * @param mixed $where
      * @return $this
      */
-    public function select($selection = null, $where = null)
+    public function select($selection)
     {
-        if (null === $selection) {
-            return $this;
-        }
         if (is_string($selection)) {
             $selection = explode(',', $selection);
         }
@@ -55,10 +52,6 @@ class Table
             }
         }
         $this->_selection = implode(',', $selection);
-        // where clause set
-        if (null !== $where) {
-            $this->where($where);
-        }
         return $this;
     }
 

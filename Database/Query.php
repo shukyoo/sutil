@@ -21,11 +21,6 @@ class Query
     protected $_sql;
     protected $_bind;
 
-    /**
-     * Common part: limit
-     */
-    protected $_limit = '';
-
 
     public function __construct(ConnectionInterface $connection, $base = null, $bind = null)
     {
@@ -83,132 +78,6 @@ class Query
         call_user_func_array([$this->_builder, $method], $args);
         return $this;
     }
-
-    /**
-     * Set limit clause by page for common simplify usage
-     * @param int $page
-     * @param int $page_size default 20
-     * @return $this
-     */
-    public function forPage($page, $page_size = 20)
-    {
-        $this->_limit = ' LIMIT '. ($page - 1) * $page_size .','. $page_size;
-        return $this;
-    }
-
-
-
-    /**
-     * Prepare insert query before execute
-     * @param array $data
-     * @return $this
-     */
-    public function prepareInsert(array $data)
-    {
-        if (!$this->_builder instanceof QueryBuilders\Table) {
-            throw new \Exception('should be table builder');
-        }
-        $this->_builder->insert($data);
-        return $this;
-    }
-
-    /**
-     * Prepare update query before execute
-     * @param array $data
-     * @param mixed $where
-     */
-    public function prepareUpdate(array $data, $where = null)
-    {
-        if (!$this->_builder instanceof QueryBuilders\Table) {
-            throw new \Exception('should be table builder');
-        }
-        $this->_builder->update($data, $where);
-        return $this;
-    }
-
-    /**
-     * Prepare delete query before execute
-     * @param array|string $where
-     * @return $this
-     */
-    public function prepareDelete($where = null)
-    {
-        if (!$this->_builder instanceof QueryBuilders\Table) {
-            throw new \Exception('should be table builder');
-        }
-        $this->_builder->delete($where);
-        return $this;
-    }
-
-
-    /**
-     * Execute insert
-     * @param array $data
-     * @return bool
-     * @throws \Exception
-     */
-    public function insert(array $data)
-    {
-        return $this->prepareInsert($data)->execute();
-    }
-
-    /**
-     * Execute update
-     * @param array $data
-     * @param array|string $where
-     * @return bool
-     * @throws \Exception
-     */
-    public function update(array $data, $where = null)
-    {
-        return $this->prepareUpdate($data, $where)->execute();
-    }
-
-    /**
-     * Execute delete
-     * @param array|string $where
-     * @return bool
-     * @throws \Exception
-     */
-    public function delete($where = null)
-    {
-        return $this->prepareDelete($where)->execute();
-    }
-
-    /**
-     * @param array|string $where
-     * @return int
-     * @throws \Exception
-     */
-    public function count($where = null)
-    {
-        if (!$this->_builder instanceof QueryBuilders\Table) {
-            throw new \Exception('should be table builder');
-        }
-        $this->_builder->count($where);
-        return $this->fetchOne();
-    }
-
-    /**
-     * Execute save
-     * perform update if exists otherwise perform insert
-     *
-     */
-    public function save($data, $where = null)
-    {
-        if (!$this->_builder instanceof QueryBuilders\Table) {
-            throw new \Exception('should be table builder');
-        }
-        if (null !== $where) {
-            $this->_builder->where($where);
-        }
-        if ((int)$this->count() > 0) {
-            return $this->update($data);
-        } else {
-            return $this->insert($data);
-        }
-    }
-
 
 
     /**
@@ -319,18 +188,18 @@ class Query
     /**
      * Get the final sql
      */
-    protected function getSql()
+    public function getSql()
     {
         if ($this->_sql) {
-            return $this->_sql . $this->_limit;
+            return $this->_sql;
         }
-        return ($this->_builder->getSql() . $this->_limit);
+        return $this->_builder->getSql();
     }
 
     /**
      * Get the bind data
      */
-    protected function getBind()
+    public function getBind()
     {
         if ($this->_sql) {
             return $this->_bind;
