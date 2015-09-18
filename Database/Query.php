@@ -1,7 +1,6 @@
 <?php namespace Sutil\Database;
 
 use PDO;
-use Sutil\Database\QueryBuilders\BuilderInterface;
 
 class Query
 {
@@ -10,21 +9,16 @@ class Query
      */
     protected $_connection;
 
-    /**
-     * @var BuilderInterface
-     */
-    protected $_builder;
-
-    /**
-     * Raw sql for simple and quick process
-     */
+    protected $_table;
     protected $_sql;
-    protected $_bind;
+    protected $_bind = [];
 
-    /**
-     * Common part: limit
-     */
-    protected $_limit = '';
+    protected $_selection = '*';
+    protected $_where = '';
+    protected $_group = '';
+    protected $_order = [];
+    protected $_limit;
+    protected $_offset;
 
 
     public function __construct(ConnectionInterface $connection, $base = null, $bind = null)
@@ -32,181 +26,202 @@ class Query
         $this->_connection = $connection;
 
         // Simplify the init
-        // If no space in $base then use it as table(recommend no space in your tablename)
-        // If there has space in your tablename, you should use table($table_name) method
+        // If thers has space in $base then use it as raw sql, otherwise use as table
         if (strpos($base, ' ')) {
-            $this->sql($base, $bind);
+            $this->raw($base, $bind);
         } else {
             $this->table($base);
         }
     }
 
     /**
-     * Use table builder
+     * Use single table
+     * @param string $table
+     * @return $this
      */
-    public function table($table_name)
+    public function table($table)
     {
-        $this->_builder = new QueryBuilders\Table($this->_connection, $table_name);
+        $this->_table = $table;
         return $this;
     }
 
     /**
-     * Use sql builder
-     */
-    public function sql($sql, $bind = null)
-    {
-        // # means IN clause
-        // { means variable assignment
-        if (strpos($sql, '{') || strpos($sql, '#')) {
-            $this->_builder = new QueryBuilders\Sql($sql, $bind);
-        } else {
-            $this->raw($sql, $bind);
-        }
-        return $this;
-    }
-
-    /**
-     * Raw sql
+     * Use raw sql
+     * @param string $sql
+     * @param mixed $bind
+     * @return $this
      */
     public function raw($sql, $bind = null)
     {
         $this->_sql = $sql;
-        $this->_bind = $bind;
-        return $this;
-    }
-
-    /**
-     * Call builder method
-     */
-    public function __call($method, $args)
-    {
-        call_user_func_array([$this->_builder, $method], $args);
-        return $this;
-    }
-
-    /**
-     * Set limit clause by page for common simplify usage
-     * @param int $page
-     * @param int $page_size default 20
-     * @return $this
-     */
-    public function forPage($page, $page_size = 20)
-    {
-        $this->_limit = ' LIMIT '. ($page - 1) * $page_size .','. $page_size;
+        $this->_addBind($bind);
         return $this;
     }
 
 
 
-    /**
-     * Prepare insert query before execute
-     * @param array $data
-     * @return $this
-     */
-    public function prepareInsert(array $data)
-    {
-        if (!$this->_builder instanceof QueryBuilders\Table) {
-            throw new \Exception('should be table builder');
-        }
-        $this->_builder->insert($data);
-        return $this;
-    }
 
     /**
-     * Prepare update query before execute
-     * @param array $data
-     * @param mixed $where
-     */
-    public function prepareUpdate(array $data, $where = null)
-    {
-        if (!$this->_builder instanceof QueryBuilders\Table) {
-            throw new \Exception('should be table builder');
-        }
-        $this->_builder->update($data, $where);
-        return $this;
-    }
-
-    /**
-     * Prepare delete query before execute
-     * @param array|string $where
-     * @return $this
-     */
-    public function prepareDelete($where = null)
-    {
-        if (!$this->_builder instanceof QueryBuilders\Table) {
-            throw new \Exception('should be table builder');
-        }
-        $this->_builder->delete($where);
-        return $this;
-    }
-
-
-    /**
-     * Execute insert
-     * @param array $data
-     * @return bool
-     * @throws \Exception
-     */
-    public function insert(array $data)
-    {
-        return $this->prepareInsert($data)->execute();
-    }
-
-    /**
-     * Execute update
-     * @param array $data
-     * @param array|string $where
-     * @return bool
-     * @throws \Exception
-     */
-    public function update(array $data, $where = null)
-    {
-        return $this->prepareUpdate($data, $where)->execute();
-    }
-
-    /**
-     * Execute delete
-     * @param array|string $where
-     * @return bool
-     * @throws \Exception
-     */
-    public function delete($where = null)
-    {
-        return $this->prepareDelete($where)->execute();
-    }
-
-    /**
-     * @param array|string $where
-     * @return int
-     * @throws \Exception
-     */
-    public function count($where = null)
-    {
-        if (!$this->_builder instanceof QueryBuilders\Table) {
-            throw new \Exception('should be table builder');
-        }
-        $this->_builder->count($where);
-        return $this->fetchOne();
-    }
-
-    /**
-     * Execute save
-     * perform update if exists otherwise perform insert
+     * where clause
+     * raw:
+     * where('id=2 and name like "%test%"')
+     * where('id=? and name like "%?%"', [2, 'test'])
+     * where('id in? and name="test"', [1,2,3])
+     * where('id in? or name="?"', [[1,2,3], 'test'])
      *
+     * @param string $condition
+     * @param mixed $bind
+     * @return $this
      */
-    public function save($data, $where = null)
+    public function where($condition, $bind = null)
     {
-        if (!$this->_builder instanceof QueryBuilders\Table) {
-            throw new \Exception('should be table builder');
-        }
-        if (null !== $where) {
-            $this->_builder->where($where);
-        }
-        if ((int)$this->count() > 0) {
-            return $this->update($data);
+        $this->_where .= " AND {$this->_whereParse($condition, $bind)}";
+        return $this;
+    }
+
+    /**
+     * OR grouped condition
+     * @param string $condition
+     * @param mixed $bind
+     * @return $this
+     */
+    public function orWhere($condition, $bind = null)
+    {
+        $this->_where .= " OR ({$this->_whereParse($condition, $bind)})";
+        return $this;
+    }
+
+    /**
+     * AND grouped condition
+     * @param string $condition
+     * @param mixed $bind
+     * @return $this
+     */
+    public function andWhere($condition, $bind = null)
+    {
+        $this->_where .= " AND ({$this->_whereParse($condition, $bind)})";
+        return $this;
+    }
+
+    /**
+     * Parse where condition
+     * @param string $condition
+     * @param mixed $bind
+     * @return string
+     */
+    protected function _whereParse($condition, $bind = null)
+    {
+        if (strpos($condition, 'in?')) {
+            $parts = preg_split('/(\?|in\?)/', $condition, null, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
+            $str = '';
+            foreach ($parts as $item) {
+                if ($item == 'in?') {
+                    $value = isset($bind[0][0]) ? array_shift($bind) : $bind;
+                    $this->_addBind($value);
+                    $str .= 'IN('. implode(',', array_fill(0, count($value), '?')) .')';
+                } elseif ($item == '?') {
+                    $this->_bind[] = array_shift($bind);
+                    $str .= $item;
+                } else {
+                    $str .= $item;
+                }
+            }
+            return $str;
         } else {
-            return $this->insert($data);
+            $this->_addBind($bind);
+            return $condition;
         }
+    }
+
+
+    /**
+     * @param array|string $selection
+     */
+    public function select($selection)
+    {
+        if (!is_array($selection)) {
+            $this->_selection = $selection;
+        } else {
+            $this->_selection = implode(',', array_map([$this, '_quoteIdentifier'], $selection));
+        }
+        return $this;
+    }
+
+
+    /**
+     * Group part
+     * @param string $field
+     * @param string $having
+     * @return $this
+     */
+    public function group($field, $having = null)
+    {
+        $this->_group = " GROUP BY {$this->_quoteIdentifier($field)}";
+        if ($having) {
+            $this->_group .= " HAVING {$having}";
+        }
+        return $this;
+    }
+
+
+
+    /**
+     * orderBy('id DESC')
+     * @param string $field
+     * @return $this
+     */
+    public function orderBy($order)
+    {
+        $this->_order[] = $order;
+        return $this;
+    }
+    /**
+     * @param string $field
+     * @return $this
+     */
+    public function orderASC($field)
+    {
+        return $this->orderBy("{$this->_quoteIdentifier($field)} ASC");
+    }
+
+    /**
+     * @param string $field
+     * @return $this
+     */
+    public function orderDESC($field)
+    {
+        return $this->orderBy("{$this->_quoteIdentifier($field)} DESC");
+    }
+
+
+
+    /**
+     * Set limit and offset
+     * @param int $number
+     * @param int $offset
+     * @return $this
+     */
+    public function limit($number, $offset = null)
+    {
+        $this->_limit = (int)$number;
+        if (null !== $offset) {
+            $this->_offset = (int)$offset;
+        }
+        return $this;
+    }
+
+    /**
+     * Set limit and offset by page
+     * @param int $page
+     * @param int $page_size
+     * @return $this
+     */
+    public function page($page, $page_size = 20)
+    {
+        if ($page < 1) {
+            $page = 1;
+        }
+        return $this->limit($page_size, (($page - 1) * $page_size));
     }
 
 
@@ -271,7 +286,7 @@ class Query
      * fetch first column array, empty array returned if nothing or false
      * @return array
      */
-    public function fetchCol()
+    public function fetchColumn()
     {
         return $this->_connection->select($this->getSql(), $this->getBind())->fetchAll(PDO::FETCH_COLUMN, 0);
     }
@@ -317,24 +332,173 @@ class Query
 
 
     /**
+     * Perform insert
+     * @param array $data
+     * @return bool
+     */
+    public function insert(array $data)
+    {
+        $cols = [];
+        $vals = [];
+        foreach ($data as $col => $val) {
+            $cols[] = $this->_quoteIdentifier($col);
+            $vals[] = '?';
+        }
+        $sql = 'INSERT INTO ' . $this->_table() .' (' . implode(', ', $cols) . ') VALUES (' . implode(', ', $vals) . ')';
+        return $this->_connection->execute($sql, array_values($data));
+    }
+
+
+    /**
+     * Perform update
+     * @param array $data
+     * @param string $where
+     * @param mixex $where_bind
+     * @return bool
+     */
+    public function update(array $data, $where = null, $where_bind = null)
+    {
+        $set = [];
+        foreach ($data as $col => $val) {
+            if (is_array($val) && isset($val[0])) {
+                $val = $val[0];
+                unset($data[$col]);
+            } else {
+                $val = '?';
+            }
+            $set[] = $this->_quoteIdentifier($col) . '=' . $val;
+        }
+        if (null !== $where) {
+            $this->where($where, $where_bind);
+        }
+        $bind = array_merge(array_values($data), $this->_bind);
+        $sql = "UPDATE {$this->_table()} SET ". implode(', ', $set) .' WHERE '. ltrim($this->_where, ' AND');
+        return $this->_connection->execute($sql, $bind);
+    }
+
+
+    /**
+     * Perform delete
+     * @param string $where
+     * @param mixed $where_bind
+     * @return bool
+     */
+    public function delete($where = null, $where_bind = null)
+    {
+        $sql = "DELETE FROM {$this->_table()} WHERE ". ltrim($this->_where, ' AND');
+        return $this->_connection->execute($sql, $this->_bind);
+    }
+
+    /**
+     * Update if exists otherwise insert
+     * @param array $data
+     * @param string $where
+     * @param mixed $where_bind
+     * @return bool
+     */
+    public function save($data, $where = null, $where_bind = null)
+    {
+        if (null !== $where) {
+            $this->where($where, $where_bind);
+        }
+        if ($this->exists()) {
+            return $this->update($data);
+        } else {
+            return $this->insert($data);
+        }
+    }
+
+
+    /**
+     * Get count of records
+     * @return int
+     */
+    public function count()
+    {
+        $sql = 'SELECT COUNT(*) FROM '. $this->_table();
+        if ($this->_where) {
+            $sql .= ' WHERE ' . ltrim($this->_where, ' AND');
+        }
+        return (int)$this->_connection->select($sql, $this->_bind)->fetchColumn(0);
+    }
+
+    /**
+     * Check if record exists
+     * @return bool
+     */
+    public function exists()
+    {
+        return (bool)$this->count();
+    }
+
+
+
+    /**
      * Get the final sql
      */
-    protected function getSql()
+    public function getSql()
     {
-        if ($this->_sql) {
-            return $this->_sql . $this->_limit;
+        $sql = '';
+        if (!$this->_sql && $this->_table) {
+            $sql = "SELECT {$this->_selection} FROM {$this->_table()}";
+        } else {
+            $sql = $this->_sql;
         }
-        return ($this->_builder->getSql() . $this->_limit);
+        if ($this->_where) {
+            if (stripos($sql, ' WHERE ')) {
+                $sql .= $this->_where;
+            } else {
+                $sql .= ' WHERE ' . ltrim($this->_where, ' AND');
+            }
+        }
+        if (!empty($this->_order)) {
+            $sql .= ' ORDER BY '. implode(',', $this->_order);
+        }
+        if (null !== $this->_limit) {
+            $sql .= ' LIMIT '. (null === $this->_offset ? $this->_limit : "{$this->_offset},{$this->_limit}");
+        }
+        return $sql;
     }
 
     /**
      * Get the bind data
      */
-    protected function getBind()
+    public function getBind()
     {
-        if ($this->_sql) {
-            return $this->_bind;
+        return $this->_bind;
+    }
+
+
+    /**
+     * get quoted table
+     * @return string
+     */
+    protected function _table()
+    {
+        return $this->_quoteIdentifier($this->_table);
+    }
+
+    /**
+     * @param $identifier
+     * @return string
+     */
+    protected function _quoteIdentifier($identifier)
+    {
+        $adapter = '\\Sutil\\Database\\Adapters\\'. ucfirst($this->_connection->driver());
+        return $adapter::quoteIdentifier($identifier);
+    }
+
+    /**
+     * Add bind value
+     * @param $bind
+     */
+    protected function _addBind($bind)
+    {
+        if (null !== $bind) {
+            if (!is_array($bind)) {
+                $bind = [$bind];
+            }
+            $this->_bind = array_merge($this->_bind, array_values($bind));
         }
-        return $this->_builder->getBind();
     }
 }
