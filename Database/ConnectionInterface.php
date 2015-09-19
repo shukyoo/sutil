@@ -70,10 +70,10 @@ interface ConnectionInterface
 
     /**
      * Query
-     * @param string $base table name or sql
+     * @param string $sql sql
      * @param mixed $bind for sql
      * @return Query
      */
-    public function query($base, $bind = null);
+    public function query($sql = null, $bind = null);
 
 }

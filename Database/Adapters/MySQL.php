@@ -46,12 +46,4 @@ class Mysql extends AdapterAbstract implements AdapterInterface
 
         return new PDO($dsn, $username, $password, $options);
     }
-
-    /**
-     * {@inheritDoc}
-     */
-    public static function quoteIdentifier($identifier)
-    {
-        return '`'.str_replace('`', '``', $identifier).'`';
-    }
 }

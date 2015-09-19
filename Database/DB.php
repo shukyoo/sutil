@@ -76,8 +76,8 @@ class DB
      * @param null $bind
      * @return Query
      */
-    public static function query($base, $bind = null)
+    public static function query($sql = null, $bind = null)
     {
-        return self::connection()->query($base, $bind);
+        return self::connection()->query($sql, $bind);
     }
 }

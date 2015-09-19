@@ -7,11 +7,4 @@ interface AdapterInterface
      */
     public function connect();
 
-    /**
-     * Quote identifier
-     *
-     * @param string $identifier
-     * @return string
-     */
-    public static function quoteIdentifier($identifier);
 }
