@@ -1,5 +1,9 @@
 <?php namespace Sutil\Database\QueryBuilder;
 
+/**
+ * Just builder for insert, update, delete, count
+ * Select queries just use raw sql
+ */
 abstract class Builder
 {
     protected $_table;

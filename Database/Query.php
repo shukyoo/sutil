@@ -30,7 +30,7 @@ class Query
     public function raw($sql, $bind = null)
     {
         if (strpos($sql, ' in?')) {
-            $this->_parseIn($sql, $bind);
+            $this->_sql = $this->_parseIn($sql, $bind, $this->_bind);
         } else {
             $this->_sql = $sql;
             $this->_bind = $bind;
@@ -41,23 +41,68 @@ class Query
     /**
      * Parse sql if it has in? condition
      */
-    protected function _parseIn($sql, $bind)
+    protected function _parseIn($sql, $sql_bind, &$bind = null)
     {
-        $this->_bind = [];
+        if (null === $bind) {
+            $bind = [];
+        }
         $parts = preg_split('/(\?|in\?)/', $sql, null, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
+        $str = '';
         foreach ($parts as $item) {
             if ($item == 'in?') {
-                $value = isset($bind[0][0]) ? array_shift($bind) : $bind;
-                $this->_bind = array_merge($this->_bind, array_values($value));
-                $this->_sql .= 'IN('. implode(',', array_fill(0, count($value), '?')) .')';
+                $value = isset($sql_bind[0][0]) ? array_shift($sql_bind) : $sql_bind;
+                $bind = array_merge($bind, array_values($value));
+                $str .= 'IN('. implode(',', array_fill(0, count($value), '?')) .')';
             } elseif ($item == '?') {
-                $this->_bind[] = array_shift($value);
-                $this->_sql .= $item;
+                $bind[] = array_shift($sql_bind);
+                $str .= $item;
             } else {
-                $this->_sql .= $item;
+                $str .= $item;
             }
         }
+        return $str;
     }
+
+
+    /**
+     * Append sql part
+     * @param string $part
+     * @param mixed $bind
+     * @return $this
+     */
+    public function append($part, $bind = null)
+    {
+        $part = trim($part);
+        if (strpos($part, ' in?')) {
+            $this->_sql .= ' '. $this->_parseIn($part, $bind, $this->_bind);
+        } else {
+            $this->_sql .= ' '. $part;
+            if (null !== $bind) {
+                if (is_array($bind)) {
+                    $this->_bind = array_merge($this->_bind, array_values($bind));
+                } else {
+                    $this->_bind[] = $bind;
+                }
+            }
+        }
+        return $this;
+    }
+
+    /**
+     * Add page limit part
+     * @param int $page
+     * @param int $page_size
+     * @return $this;
+     */
+    public function page($page, $page_size = 20)
+    {
+        if ($page < 1) {
+            $page = 1;
+        }
+        $this->_sql .= ' LIMIT ' . (($page - 1) * $page_size) .','. $page_size;
+        return $this;
+    }
+
 
 
     /**
