@@ -4,13 +4,23 @@ use Sutil\Cache\Storage\StorageInterface;
 
 class Backend implements BackendInterface
 {
+    protected $_driver = '';
     protected $_storage = null;
-    protected $_config = [];
+    protected $_expiration = 0;
 
-    public function __construct(StorageInterface $storage, $config = [])
+    public function __construct($config)
     {
-        $this->_storage = $storage;
-        $this->_config = $config;
+        if (empty($config['driver'])) {
+            throw new \Exception('Driver is required for cache setting');
+        }
+        $this->_driver = strtolower($config['driver']);
+        unset($config['driver']);
+        if (isset($config['expiration'])) {
+            $this->_expiration = (int)$config['expiration'];
+        }
+
+        $storage_class = '\\Sutil\\Cache\\Storage\\'. ucfirst($this->_driver);
+        $this->_storage = new $storage_class($config);
     }
 
     /**
@@ -27,7 +37,7 @@ class Backend implements BackendInterface
     public function set($key, $value, $expiration = null)
     {
         if (null === $expiration) {
-            $expiration = isset($this->_config['expiration']) ? (int)$this->_config['expiration'] : 0;
+            $expiration = $this->_expiration;
         }
         return $this->_storage->set($key, $value, $expiration);
     }

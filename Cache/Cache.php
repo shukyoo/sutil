@@ -6,30 +6,53 @@ class Cache
 
     public static function config(array $config)
     {
-        if (empty($config['default'])) {
-            throw new \Exception('Lost "default" set in your cache config');
+        if (empty($config['default']) && empty($config['driver'])) {
+            throw new \Exception('Invalid cache config');
         }
         self::$_config = $config;
     }
 
+    /**
+     * @param string $name
+     * @return mixed
+     */
+    public static function getConfig($name = null)
+    {
+        return isset($name) ? self::$_config[$name] : self::$_config;
+    }
 
+
+    /**
+     * @param string $storage_name
+     * @return Backend
+     * @throws \Exception
+     */
     public static function backend($storage_name = null)
     {
         static $backends = [];
-        $storage_name || $storage_name = self::$_config['default'];
-        if (!isset($queries[$storage_name])) {
-            if (empty(self::$_config[$storage_name])) {
-                throw new \Exception('Invalid cache config');
-            }
-            $storage_class = '\\Sutil\\Cache\\Storage\\'. ucfirst(strtolower($storage_name));
-            $backend_config = [];
-            if (isset(self::$_config['expiration'])) {
-                $backend_config['expiration'] = self::$_config['expiration'];
-            }
-            $backends[$storage_name] = new Backend(new $storage_class(self::$_config[$storage_name]), $backend_config);
+
+        if (!empty($storage_name)) {
+            $name = $storage_name;
+        } else {
+            $name = !empty(self::$_config['default']) ? self::$_config['default'] : self::$_config['driver'];
         }
-        return $backends[$storage_name];
+
+        if (!isset($backends[$name])) {
+            $index = $storage_name ?: self::$_config['default'];
+            if ($index) {
+                if (empty(self::$_config[$index])) {
+                    throw new \Exception('Invalid storage name in cache config');
+                }
+                $config = self::$_config[$index];
+            } else {
+                $config = self::$_config;
+            }
+            $backends[$name] = new Backend($config);
+        }
+
+        return $backends[$name];
     }
+
 
     /**
      * Static call connection method

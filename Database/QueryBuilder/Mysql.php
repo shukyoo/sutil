@@ -1,6 +1,6 @@
 <?php namespace Sutil\Database\QueryBuilder;
 
-class MysqlBuilder extends Builder
+class Mysql extends BuilderAbstract
 {
     /**
      * @param $identifier

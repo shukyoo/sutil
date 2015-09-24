@@ -11,6 +11,9 @@ class DB
 
     public static function config(Array $config)
     {
+        if (empty($config['default']) && empty($config['driver'])) {
+            throw new \Exception('Invalid database config');
+        }
         self::$_config = $config;
     }
 
@@ -23,41 +26,37 @@ class DB
         return isset($name) ? self::$_config[$name] : self::$_config;
     }
 
-    /**
-     * Connect specified database
-     *
-     * @param string $name
-     * @return ConnectionInterface
-     */
-    public static function connect($name = null)
-    {
-        return self::connection($name);
-    }
 
     /**
      * Get a connection
      *
-     * @param string $name
+     * @param string $conn_name
      * @return ConnectionInterface
      * @throws \Exception
      */
-    public static function connection($name = null)
+    public static function connect($conn_name = null)
     {
         static $connections = [];
-        $name || $name = '_';
+
+        if (!empty($conn_name)) {
+            $name = $conn_name;
+        } else {
+            $name = !empty(self::$_config['default']) ? self::$_config['default'] : self::$_config['driver'];
+        }
+
         if (!isset($connections[$name])) {
-            if ($name != '_') {
-                if (empty(self::$_config[$name])) {
-                    throw new \Exception('Invalid connection name');
+            $index = $conn_name ?: self::$_config['default'];
+            if ($index) {
+                if (empty(self::$_config[$index])) {
+                    throw new \Exception('Invalid connection name in database config');
                 }
-                $config = self::$_config[$name];
-            } elseif (!empty(self::$_config['driver'])) {
-                $config = self::$_config;
+                $config = self::$_config[$index];
             } else {
-                $config = array_values(self::$_config)[0];
+                $config = self::$_config;
             }
             $connections[$name] = new Connection($config);
         }
+
         return $connections[$name];
     }
 
@@ -66,18 +65,18 @@ class DB
      */
     public static function __callStatic($method, $args)
     {
-        return call_user_func_array([self::connection(), $method], $args);
+        return call_user_func_array([self::connect(), $method], $args);
     }
 
 
     /**
      * For query
-     * @param $base
-     * @param null $bind
+     * @param string $base
+     * @param mixed $bind
      * @return Query
      */
-    public static function query($sql = null, $bind = null)
+    public static function query($base, $bind = null)
     {
-        return self::connection()->query($sql, $bind);
+        return self::connect()->query($base, $bind);
     }
 }

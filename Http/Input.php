@@ -8,7 +8,7 @@ class Input
      */
     public static function all()
     {
-        return array_replace_recursive($_GET, $_POST, $_FILES);
+        return Request::all();
     }
 
     /**
@@ -19,11 +19,7 @@ class Input
      */
     public static function get($key, $default = null)
     {
-        if (isset($_GET[$key]) && is_array($_GET[$key])) {
-            return filter_input(INPUT_GET, $key, FILTER_DEFAULT, FILTER_REQUIRE_ARRAY);
-        } else {
-            return filter_input(INPUT_GET, $key);
-        }
+        return Request::get($key, $default);
     }
 
     /**
@@ -33,7 +29,7 @@ class Input
      */
     public static function getInt($key, $default = 0)
     {
-        return isset($_GET[$key]) ? (int)$_GET[$key] : (int)$default;
+        return Request::getInt($key, $default);
     }
 
     /**
@@ -44,11 +40,7 @@ class Input
      */
     public static function post($key, $default = null)
     {
-        if (isset($_POST[$key]) && is_array($_POST[$key])) {
-            return filter_input(INPUT_POST, $key, FILTER_DEFAULT, FILTER_REQUIRE_ARRAY);
-        } else {
-            return filter_input(INPUT_POST, $key);
-        }
+        return Request::post($key, $default);
     }
 
     /**
@@ -58,7 +50,7 @@ class Input
      */
     public static function postInt($key, $default = 0)
     {
-        return isset($_POST[$key]) ? (int)$_POST[$key] : (int)$default;
+        return Request::postInt($key, $default);
     }
 
 
@@ -68,7 +60,7 @@ class Input
      */
     public static function files()
     {
-        return $_FILES;
+        return Request::files();
     }
 
     /**
@@ -78,6 +70,6 @@ class Input
      */
     public static function file($key)
     {
-        return isset($_FILES[$key]) ? $_FILES[$key] : null;
+        return Request::file($key);
     }
 }

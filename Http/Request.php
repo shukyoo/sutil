@@ -1,94 +1,85 @@
 <?php namespace Sutil\Http;
 
-defined('ST_DEFAULT') || define('ST_DEFAULT', 10);
-defined('ST_RAW') || define('ST_RAW', 11);
-defined('ST_INT') || define('ST_INT', 12);
-
 class Request
 {
+    /**
+     * Get all input request
+     * @return array
+     */
+    public static function all()
+    {
+        return array_replace_recursive($_GET, $_POST, $_FILES);
+    }
 
     /**
-     * Get query params, special charecters will be stripped by default
-     * Specify ST_RAW for return raw data
-     * Specify ST_INT for return int
-     *
-     * Example:
-     * Request::get('id', ST_INT);
-     * Request::get('test');
-     *
-     * @param string $key
-     * @param int $type ST_RAW | ST_INT
+     * Get a get request data
+     * @param $key
      * @param mixed $default
      * @return mixed
      */
-    public static function get($key, $type = ST_DEFAULT, $default = null)
+    public static function get($key, $default = null)
     {
         if (isset($_GET[$key]) && is_array($_GET[$key])) {
-            $var = filter_input(INPUT_GET, $key, FILTER_DEFAULT, FILTER_REQUIRE_ARRAY);
-            foreach ($var as $k=>$v) {
-                $v = str_replace(['<', '>', '\'', '"', '%', '`'], '', $v);
-                $var[$k] = self::_sanitize($v, $type);
-            }
+            return filter_input(INPUT_GET, $key, FILTER_DEFAULT, FILTER_REQUIRE_ARRAY);
         } else {
-            $var = filter_input(INPUT_GET, $key);
-            $var = str_replace(['<', '>', '\'', '"', '%', '`'], '', $var);
-            $var = self::_sanitize($var, $type, $default);
+            return filter_input(INPUT_GET, $key);
         }
-
-        return $var;
     }
 
+    /**
+     * @param $key
+     * @param int $default
+     * @return int
+     */
+    public static function getInt($key, $default = 0)
+    {
+        return isset($_GET[$key]) ? (int)$_GET[$key] : (int)$default;
+    }
 
     /**
-     * Get post params,special charecters will be stripped by rule of FILTER_SANITIZE_SPECIAL_CHARS
-     * Specify ST_RAW for return raw data
-     * Specify ST_INT for return int
-     *
-     * @param string $key
-     * @param int $type
+     * Get a post request data
+     * @param $key
      * @param mixed $default
      * @return mixed
      */
-    public static function post($key, $type = ST_DEFAULT, $default = null)
+    public static function post($key, $default = null)
     {
         if (isset($_POST[$key]) && is_array($_POST[$key])) {
-            $var = filter_input(INPUT_POST, $key, FILTER_DEFAULT, FILTER_REQUIRE_ARRAY);
-            foreach ($var as $k=>$v) {
-                $var[$k] = self::_sanitize($v, $type);
-            }
+            return filter_input(INPUT_POST, $key, FILTER_DEFAULT, FILTER_REQUIRE_ARRAY);
         } else {
-            $var = filter_input(INPUT_POST, $key);
-            $var = self::_sanitize($var, $type, $default);
+            return filter_input(INPUT_POST, $key);
         }
-        return $var;
     }
 
     /**
-     * Request params
+     * @param $key
+     * @param int $default
+     * @return int
      */
-    public static function input($key, $type = ST_DEFAULT, $default = null)
+    public static function postInt($key, $default = 0)
     {
-        return isset($_POST[$key]) ? self::post($key, $type, $default) : self::get($key, $type, $default);
+        return isset($_POST[$key]) ? (int)$_POST[$key] : (int)$default;
     }
 
 
     /**
-     * Sanitize
+     * Get all files uploaded
+     * @return array
      */
-    protected static function _sanitize($var, $type = ST_DEFAULT, $default = null)
+    public static function files()
     {
-        if (null !== $default && (is_null($var) || $var === '')) {
-            $var = $default;
-        }
-        if ($type == ST_INT) {
-            return (int)$var;
-        } elseif ($type == ST_RAW) {
-            return $var;
-        } else {
-            return filter_var(trim($var), FILTER_SANITIZE_SPECIAL_CHARS);
-        }
+        return $_FILES;
     }
 
+    /**
+     * Get a file uploaded
+     * @param $key
+     * @return array|null
+     */
+    public static function file($key)
+    {
+        return isset($_FILES[$key]) ? $_FILES[$key] : null;
+    }
 
     /**
      * Get ip address safely

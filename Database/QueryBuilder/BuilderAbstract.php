@@ -4,13 +4,63 @@
  * Just builder for insert, update, delete, count
  * Select queries just use raw sql
  */
-abstract class Builder
+abstract class BuilderAbstract
 {
     protected $_table;
 
     public function __construct($table)
     {
         $this->_table = $table;
+    }
+
+
+    /**
+     * @param array|string $selection
+     * @return string
+     */
+    public function select($selection)
+    {
+        return is_array($selection) ? implode(',', array_map([$this, '_quoteIdentifier'], $selection)) : $selection;
+    }
+
+    /**
+     * Group part
+     * @param string $field
+     * @param string $having
+     * @return string
+     */
+    public function group($field, $having = null)
+    {
+        $having = $having ? " HAVING {$having}" : '';
+        return " GROUP BY {$this->_quoteIdentifier($field)}{$having}";
+    }
+
+    /**
+     * orderBy('id DESC')
+     * @param string $field
+     * @return $this
+     */
+    public function orderBy($order)
+    {
+        $this->_order[] = $order;
+        return $this;
+    }
+    /**
+     * @param string $field
+     * @return $this
+     */
+    public function orderASC($field)
+    {
+        return $this->orderBy("{$this->_quoteIdentifier($field)} ASC");
+    }
+
+    /**
+     * @param string $field
+     * @return $this
+     */
+    public function orderDESC($field)
+    {
+        return $this->orderBy("{$this->_quoteIdentifier($field)} DESC");
     }
 
 

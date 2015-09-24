@@ -234,6 +234,7 @@ DB::config(array(
 ### multiple database with master/slave mode
 ```php
 DB::config(
+    'default' => 'db1',
     'db1' => array(
         'driver' => 'mysql',
         'dbname' => 'test1'
