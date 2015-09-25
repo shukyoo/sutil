@@ -66,11 +66,7 @@ class Connection implements ConnectionInterface
      */
     protected function _adapter($config)
     {
-        $driver = '\\Sutil\\Database\\Adapters\\'. ucfirst($this->_driver);
-        if (!class_exists($driver)) {
-            throw new \Exception("The driver {$driver} has not been implemented");
-        }
-        return new $driver($config);
+        return new Adapter($config);
     }
 
     /**
@@ -107,7 +103,6 @@ class Connection implements ConnectionInterface
         if ($bind === null) {
             return null;
         }
-        is_callable($bind) && $bind = $bind();
         is_array($bind) || $bind = [$bind];
         return $bind;
     }
@@ -200,6 +195,26 @@ class Connection implements ConnectionInterface
      */
     public function query($base, $bind = null)
     {
-        return new Query($this, $base, $bind);
+        if (strpos($base, ' ')) {
+            return $this->sql($base, $bind);
+        } else {
+            return $this->table($base);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function sql($sql, $bind = null)
+    {
+        return new Query\Sql($this, $sql, $bind);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function table($table)
+    {
+        return new Query\Table($this, $table);
     }
 }

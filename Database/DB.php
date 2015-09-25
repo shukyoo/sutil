@@ -45,8 +45,8 @@ class DB
         }
 
         if (!isset($connections[$name])) {
-            $index = $conn_name ?: self::$_config['default'];
-            if ($index) {
+            if ($conn_name || !empty(self::$_config['default'])) {
+                $index = $conn_name ?: self::$_config['default'];
                 if (empty(self::$_config[$index])) {
                     throw new \Exception('Invalid connection name in database config');
                 }
@@ -70,13 +70,35 @@ class DB
 
 
     /**
-     * For query
-     * @param string $base
-     * @param mixed $bind
-     * @return Query
+     * Query
+     * If thers has space in $base then use it as raw sql, otherwise use as table
+     * @param string $base sql|table
+     * @param mixed $bind for sql
+     * @return Query\Sql|Query\Table
      */
     public static function query($base, $bind = null)
     {
         return self::connect()->query($base, $bind);
+    }
+
+    /**
+     * Use raw sql query
+     * @param string $sql
+     * @param mixed $bind
+     * @return Query\Sql
+     */
+    public static function sql($sql, $bind = null)
+    {
+        return self::connect()->sql($sql, $bind);
+    }
+
+    /**
+     * Use table builder query
+     * @param string $table
+     * @return Query\Table
+     */
+    public static function table($table)
+    {
+        return self::connect()->table($table);
     }
 }

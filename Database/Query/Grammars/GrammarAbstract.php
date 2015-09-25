@@ -1,18 +1,7 @@
-<?php namespace Sutil\Database\QueryBuilder;
+<?php namespace Sutil\Database\Query\Grammars;
 
-/**
- * Just builder for insert, update, delete, count
- * Select queries just use raw sql
- */
-abstract class BuilderAbstract
+abstract class GrammarAbstract
 {
-    protected $_table;
-
-    public function __construct($table)
-    {
-        $this->_table = $table;
-    }
-
 
     /**
      * @param array|string $selection
@@ -243,12 +232,18 @@ abstract class BuilderAbstract
      */
     protected function _table()
     {
-        return $this->_quoteIdentifier($this->_table);
+        return $this->_wrap($this->_table);
     }
 
+
+
     /**
-     * @param $identifier
+     * Wrap a column identifiers.
+     * @param string $field
      * @return string
      */
-    abstract protected function _quoteIdentifier($identifier);
+    protected function _wrap($field)
+    {
+        return '"'.str_replace('"', '""', $field).'"';
+    }
 }

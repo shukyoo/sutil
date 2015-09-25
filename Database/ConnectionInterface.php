@@ -70,10 +70,27 @@ interface ConnectionInterface
 
     /**
      * Query
+     * If thers has space in $base then use it as raw sql, otherwise use as table
      * @param string $base sql|table
      * @param mixed $bind for sql
-     * @return Query
+     * @return Query\Sql|Query\Table
      */
     public function query($base, $bind = null);
+
+
+    /**
+     * Use raw sql query
+     * @param string $sql
+     * @param mixed $bind
+     * @return Query\Sql
+     */
+    public function sql($sql, $bind = null);
+
+    /**
+     * Use table builder query
+     * @param string $table
+     * @return Query\Table
+     */
+    public function table($table);
 
 }
