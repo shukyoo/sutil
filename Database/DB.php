@@ -43,7 +43,6 @@ class DB
         } else {
             $name = !empty(self::$_config['default']) ? self::$_config['default'] : self::$_config['driver'];
         }
-
         if (!isset($connections[$name])) {
             if ($conn_name || !empty(self::$_config['default'])) {
                 $index = $conn_name ?: self::$_config['default'];

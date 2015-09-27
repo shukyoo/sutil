@@ -36,10 +36,9 @@ class Cache
         } else {
             $name = !empty(self::$_config['default']) ? self::$_config['default'] : self::$_config['driver'];
         }
-
         if (!isset($backends[$name])) {
-            $index = $storage_name ?: self::$_config['default'];
-            if ($index) {
+            if ($storage_name || !empty(self::$_config['default'])) {
+                $index = $storage_name ?: self::$_config['default'];
                 if (empty(self::$_config[$index])) {
                     throw new \Exception('Invalid storage name in cache config');
                 }

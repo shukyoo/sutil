@@ -33,17 +33,6 @@ class Sql extends QueryAbstract
 
 
     /**
-     * Bind value
-     */
-    public function bind($bind)
-    {
-        if (!is_array($bind)) {
-            $bind = [$bind];
-        }
-        $this->_bind = array_merge($this->_bind, $bind);
-    }
-
-    /**
      * {@inheritDoc}
      */
     public function getSql()
@@ -57,5 +46,17 @@ class Sql extends QueryAbstract
     public function getBind()
     {
         return $this->_bind;
+    }
+
+    /**
+     * Bind value
+     */
+    public function bind($bind)
+    {
+        if (is_array($bind)) {
+            $this->_bind = array_merge($this->_bind, $bind);
+        } else {
+            $this->_bind[] = $bind;
+        }
     }
 }
