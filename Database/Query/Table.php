@@ -1,6 +1,6 @@
 <?php namespace Sutil\Database\Query;
 
-use Sutil\Database\ConnectionInterface;
+use Sutil\Database\Connection;
 
 class Table extends QueryAbstract
 {
@@ -19,7 +19,7 @@ class Table extends QueryAbstract
     protected $_limit;
     protected $_offset;
 
-    public function __construct(ConnectionInterface $connection, $table)
+    public function __construct(Connection $connection, $table)
     {
         $this->_connection = $connection;
         $this->_table = trim($table);

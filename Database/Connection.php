@@ -53,7 +53,7 @@ class Connection implements ConnectionInterface
 
 
     /**
-     * {@inheritDoc}
+     * Get current database driver name
      */
     public function driver()
     {
@@ -70,7 +70,17 @@ class Connection implements ConnectionInterface
     }
 
     /**
-     * {@inheritDoc}
+     * Get PDO instance
+     * @return \PDO
+     */
+    public function pdo()
+    {
+        return $this->master();
+    }
+
+    /**
+     * Get a master PDO instance
+     * @return \PDO
      */
     public function master()
     {
@@ -81,7 +91,8 @@ class Connection implements ConnectionInterface
     }
 
     /**
-     * {@inheritDoc}
+     * Get a slave PDO instance
+     * @return \PDO
      */
     public function slave()
     {
@@ -108,7 +119,11 @@ class Connection implements ConnectionInterface
     }
 
     /**
-     * {@inheritDoc}
+     * Run a select statement against the database.
+     * @param string $sql
+     * @param mixed $bind
+     * @param int $fetch_mode PDO fetch mode
+     * @return \PDOStatement
      */
     public function select($sql, $bind = null, $fetch_mode = null, $fetch_args = null)
     {
@@ -121,7 +136,10 @@ class Connection implements ConnectionInterface
     }
 
     /**
-     * {@inheritDoc}
+     * Execute an SQL statement and return the boolean result.
+     * @param  string  $sql
+     * @param  array   $bind
+     * @return bool
      */
     public function execute($sql, $bind = null)
     {
@@ -129,7 +147,8 @@ class Connection implements ConnectionInterface
     }
 
     /**
-     * {@inheritDoc}
+     * Get last insert id
+     * @return int|string
      */
     public function lastInsertId()
     {
@@ -138,7 +157,10 @@ class Connection implements ConnectionInterface
 
 
     /**
-     * {@inheritDoc}
+     * Execute a Closure within a transaction.
+     * @param \Closure $callback
+     * @return mixed
+     * @throws \Exception
      */
     public function transaction(\Closure $callback)
     {
@@ -156,7 +178,8 @@ class Connection implements ConnectionInterface
     }
 
     /**
-     * {@inheritDoc}
+     * Start a new database transaction.
+     * @return void
      */
     public function beginTransaction()
     {
@@ -167,7 +190,8 @@ class Connection implements ConnectionInterface
     }
 
     /**
-     * {@inheritDoc}
+     * Commit the active database transaction.
+     * @return void
      */
     public function commit()
     {
@@ -178,7 +202,8 @@ class Connection implements ConnectionInterface
     }
 
     /**
-     * {@inheritDoc}
+     * Rollback the active database transaction.
+     * @return void
      */
     public function rollBack()
     {
@@ -191,7 +216,11 @@ class Connection implements ConnectionInterface
     }
 
     /**
-     * {@inheritDoc}
+     * Query
+     * If thers has space in $base then use it as raw sql, otherwise use as table
+     * @param string $base sql|table
+     * @param mixed $bind for sql
+     * @return Query\Sql|Query\Table
      */
     public function query($base, $bind = null)
     {
@@ -203,7 +232,10 @@ class Connection implements ConnectionInterface
     }
 
     /**
-     * {@inheritDoc}
+     * Use raw sql query
+     * @param string $sql
+     * @param mixed $bind
+     * @return Query\Sql
      */
     public function sql($sql, $bind = null)
     {
@@ -211,7 +243,9 @@ class Connection implements ConnectionInterface
     }
 
     /**
-     * {@inheritDoc}
+     * Use table builder query
+     * @param string $table
+     * @return Query\Table
      */
     public function table($table)
     {

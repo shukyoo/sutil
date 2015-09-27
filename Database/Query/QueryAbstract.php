@@ -1,12 +1,12 @@
 <?php namespace Sutil\Database\Query;
 
 use PDO;
-use Sutil\Database\ConnectionInterface;
+use Sutil\Database\Connection;
 
 abstract class QueryAbstract
 {
     /**
-     * @var ConnectionInterface
+     * @var Connection
      */
     protected $_connection;
 

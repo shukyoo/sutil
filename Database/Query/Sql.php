@@ -1,13 +1,13 @@
 <?php namespace Sutil\Database\Query;
 
-use Sutil\Database\ConnectionInterface;
+use Sutil\Database\Connection;
 
 class Sql extends QueryAbstract
 {
     protected $_sql;
     protected $_bind = [];
 
-    public function __construct(ConnectionInterface $connection, $sql, $bind = null)
+    public function __construct(Connection $connection, $sql, $bind = null)
     {
         $this->_connection = $connection;
 
