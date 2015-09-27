@@ -31,7 +31,7 @@ class DB
      * Get a connection
      *
      * @param string $conn_name
-     * @return ConnectionInterface
+     * @return Connection
      * @throws \Exception
      */
     public static function connect($conn_name = null)
