@@ -51,16 +51,16 @@ class Validator
                 $rule[$k] = $rule_str;
             }
         }
+
         $methods = get_class_methods($this);
-        foreach ($value as $k=>$v) {
-            if (empty($rule[$k])) {
-                continue;
+
+        foreach ($rule as $k=>$item_rule) {
+            if (!is_array($item_rule)) {
+                $item_rule = explode('|', $item_rule);
+                $item_rule = array_combine($item_rule, array_fill(0, count($item_rule), ''));
             }
-            if (!is_array($rule[$k])) {
-                $rule[$k] = explode('|', $rule[$k]);
-                $rule[$k] = array_combine($rule[$k], array_fill(0, count($rule[$k]), ''));
-            }
-            foreach ($rule[$k] as $method => $msg) {
+            $v = isset($value[$k]) ? $value[$k] : null;
+            foreach ($item_rule as $method => $msg) {
                 if (strpos($method, ':')) {
                     $p = strpos($method, ':');
                     $param = substr($method, $p+1);
@@ -89,10 +89,14 @@ class Validator
      */
     protected function _required($value)
     {
-        if (is_string($value)) {
-            $value = trim($value);
+        if (is_null($value)) {
+            return false;
+        } elseif (is_string($value) && trim($value) === '') {
+            return false;
+        } elseif ((is_array($value) || $value instanceof \Countable) && count($value) < 1) {
+            return false;
         }
-        return (!empty($value) || $value !== '');
+        return true;
     }
 
     /**
