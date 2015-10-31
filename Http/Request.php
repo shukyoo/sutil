@@ -12,6 +12,17 @@ class Request
     }
 
     /**
+     * POST or GET
+     * @param $key
+     * @param mixed $default
+     * @return mixed
+     */
+    public static function request($key, $default = null)
+    {
+        return filter_has_var(INPUT_POST, $key) ? self::post($key, $default) : self::get($key, $default);
+    }
+
+    /**
      * Get a get request data
      * @param $key
      * @param mixed $default
@@ -20,9 +31,14 @@ class Request
     public static function get($key, $default = null)
     {
         if (isset($_GET[$key]) && is_array($_GET[$key])) {
-            return filter_input(INPUT_GET, $key, FILTER_DEFAULT, FILTER_REQUIRE_ARRAY);
+            return filter_input_array(INPUT_GET, $key, FILTER_SANITIZE_STRING, array(
+                'flags' => FILTER_REQUIRE_ARRAY,
+                'options' => ['default' => $default]
+            ));
         } else {
-            return filter_input(INPUT_GET, $key);
+            return filter_input(INPUT_GET, $key, FILTER_SANITIZE_STRING, array(
+                'options' => ['default' => $default]
+            ));
         }
     }
 
@@ -45,9 +61,14 @@ class Request
     public static function post($key, $default = null)
     {
         if (isset($_POST[$key]) && is_array($_POST[$key])) {
-            return filter_input(INPUT_POST, $key, FILTER_DEFAULT, FILTER_REQUIRE_ARRAY);
+            return filter_input(INPUT_POST, $key, FILTER_DEFAULT, array(
+                'flags' => FILTER_REQUIRE_ARRAY,
+                'options' => ['default' => $default]
+            ));
         } else {
-            return filter_input(INPUT_POST, $key);
+            return filter_input(INPUT_POST, $key, FILTER_DEFAULT, array(
+                'options' => ['default' => $default]
+            ));
         }
     }
 
