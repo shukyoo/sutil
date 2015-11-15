@@ -1,6 +1,6 @@
 <?php namespace Sutil\Database;
 
-class Connection implements ConnectionInterface
+class Connection
 {
     protected $_master_configs = [];
     protected $_master_pdos = [];
