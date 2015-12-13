@@ -1,103 +1,190 @@
 <?php namespace Sutil\Database;
-
+use PDO;
 /**
  * Facade for db query
- * Use this for raw and simple query
- * Recommend use model in normal project
+ * config e.g.
+ * array(
+    'dsn' => '',
+    'username' => '',
+    'grammar' => 'MyGrammar',
+    'slave' => array(
+        'dsn' => '',
+        'username' => ''
+    )
+    )
  */
 class DB
 {
-    protected static $_config = [];
+    /**
+     * @var Connection
+     */
+    protected static $_connection;
+    protected static $_grammar;
 
     public static function config(Array $config)
     {
-        if (empty($config['default']) && empty($config['driver'])) {
-            throw new \Exception('Invalid database config');
+        if (!empty($config['grammar'])) {
+            self::$_grammar = $config['grammar'];
+            unset($config['grammar']);
         }
-        self::$_config = $config;
+        self::$_connection = new Connection($config);
+    }
+
+
+    /**
+     * fetch all array with assoc, empty array returned if nothing or false
+     * @return array
+     */
+    public function fetchAll($sql, $bind = null)
+    {
+        return self::$_connection->selectPrepare($sql, $bind)->fetchAll(PDO::FETCH_ASSOC);
     }
 
     /**
-     * @param string $name
+     * fetch all with firest field as indexed key, empty array returned if nothing or false
+     * @return array
+     */
+    public function fetchAllIndexed($sql, $bind = null)
+    {
+        return self::$_connection->selectPrepare($sql, $bind)->fetchAll(PDO::FETCH_UNIQUE | PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * fetch all grouped array with first field as keys, empty array returned if nothing or false
+     * @return array
+     */
+    public function fetchAllGrouped($sql, $bind = null)
+    {
+        return self::$_connection->selectPrepare($sql, $bind)->fetchAll(PDO::FETCH_GROUP | PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * fetch array of requested class with mapped data, empty array returned if nothing or false
+     * @param string|object $class
+     * @return array
+     */
+    public function fetchAllClass($sql, $bind, $class)
+    {
+        return self::$_connection->selectPrepare($sql, $bind)->fetchAll(PDO::FETCH_CLASS | PDO::FETCH_PROPS_LATE, $class);
+    }
+
+    /**
+     * fetch one row array with assoc, empty array returned if nothing or false
+     * @return array
+     */
+    public function fetchRow($sql, $bind = null)
+    {
+        return self::$_connection->selectPrepare($sql, $bind)->fetch(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * get instance of the class with mapped data, false returned if nothing or false
+     * @param string|object $class
+     * @return object|false
+     */
+    public function fetchRowClass($sql, $bind, $class)
+    {
+        return self::$_connection->selectPrepare($sql, $bind, PDO::FETCH_CLASS | PDO::FETCH_PROPS_LATE, $class)->fetch();
+    }
+
+    /**
+     * fetch first column array, empty array returned if nothing or false
+     * @return array
+     */
+    public function fetchColumn($sql, $bind = null)
+    {
+        return self::$_connection->selectPrepare($sql, $bind)->fetchAll(PDO::FETCH_COLUMN, 0);
+    }
+
+    /**
+     * fetch pairs of first column as Key and second column as Value, empty array returned if nothing or false
+     * @return array
+     */
+    public function fetchPairs($sql, $bind = null)
+    {
+        return self::$_connection->selectPrepare($sql, $bind)->fetchAll(PDO::FETCH_KEY_PAIR);
+    }
+
+    /**
+     * fetch grouped pairs of K/V with first field as keys of grouped array, empty array returned if nothing of false
+     * @return array
+     */
+    public function fetchPairsGrouped($sql, $bind = null)
+    {
+        $data = [];
+        foreach (self::$_connection->selectPrepare($sql, $bind)->fetchAll(PDO::FETCH_NUM) as $row) {
+            $data[$row[0]] = [$row[1] => $row[2]];
+        }
+        return $data;
+    }
+
+    /**
+     * fetch one column value, false returned if nothing or false
      * @return mixed
      */
-    public static function getConfig($name = null)
+    public function fetchOne($sql, $bind = null)
     {
-        return isset($name) ? self::$_config[$name] : self::$_config;
+        return self::$_connection->selectPrepare($sql, $bind)->fetchColumn(0);
+    }
+
+    /**
+     * @param $table
+     * @param array $data
+     * @return bool
+     */
+    public function insert($table, array $data)
+    {
+        return self::query($table)->insert($data);
+    }
+
+    /**
+     * @param $table
+     * @param array $data
+     * @param null $where
+     * @return bool
+     */
+    public function update($table, array $data, $where = null)
+    {
+        return self::query($table)->update($data, $where);
+    }
+
+    /**
+     * @param $table
+     * @param null $where
+     * @return bool
+     */
+    public function delete($table, $where = null)
+    {
+        return self::query($table)->delete($where);
     }
 
 
     /**
-     * Get a connection
-     *
-     * @param string $conn_name
-     * @return Connection
-     * @throws \Exception
+     * @param null $table
+     * @return Query
      */
-    public static function connect($conn_name = null)
+    public function query($table = null)
     {
-        static $connections = [];
-
-        if (!empty($conn_name)) {
-            $name = $conn_name;
+        if (self::$_grammar) {
+            $grammar = new self::$_grammar();
         } else {
-            $name = !empty(self::$_config['default']) ? self::$_config['default'] : self::$_config['driver'];
+            $grammar = new Grammar();
         }
-        if (!isset($connections[$name])) {
-            if ($conn_name || !empty(self::$_config['default'])) {
-                $index = $conn_name ?: self::$_config['default'];
-                if (empty(self::$_config[$index])) {
-                    throw new \Exception('Invalid connection name in database config');
-                }
-                $config = self::$_config[$index];
-            } else {
-                $config = self::$_config;
-            }
-            $connections[$name] = new Connection($config);
+        $query = new Query(self::$_connection, $grammar);
+        if ($table) {
+            $query = $query->from($table);
         }
-
-        return $connections[$name];
+        return $query;
     }
+    
 
     /**
-     * Static call connection method
+     * @param string $method
+     * @param array $args
+     * @return mixed
      */
-    public static function __callStatic($method, $args)
+    protected static function __callStatic($method, $args = [])
     {
-        return call_user_func_array([self::connect(), $method], $args);
-    }
-
-
-    /**
-     * Query
-     * If thers has space in $base then use it as raw sql, otherwise use as table
-     * @param string $base sql|table
-     * @param mixed $bind for sql
-     * @return Query\Sql|Query\Table
-     */
-    public static function query($base, $bind = null)
-    {
-        return self::connect()->query($base, $bind);
-    }
-
-    /**
-     * Use raw sql query
-     * @param string $sql
-     * @param mixed $bind
-     * @return Query\Sql
-     */
-    public static function sql($sql, $bind = null)
-    {
-        return self::connect()->sql($sql, $bind);
-    }
-
-    /**
-     * Use table builder query
-     * @param string $table
-     * @return Query\Table
-     */
-    public static function table($table)
-    {
-        return self::connect()->table($table);
+        return call_user_func_array([self::$_connection, $method], $args);
     }
 }

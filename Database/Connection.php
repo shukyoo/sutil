@@ -1,131 +1,81 @@
 <?php namespace Sutil\Database;
 
+use PDO;
+
 class Connection
 {
-    protected $_master_configs = [];
-    protected $_master_pdos = [];
-    protected $_master_index = 0;
-
-    protected $_slave_configs = [];
-    protected $_slave_pdos = [];
-    protected $_slave_index = 0;
-
-    protected $_driver = '';
-
+    protected static $_master_config = [];
+    protected static $_slave_config = [];
     protected $_transactions = 0;
-
 
     public function __construct(array $config)
     {
-        if (empty($config['driver'])) {
-            throw new \Exception('Driver is required in the database config');
-        }
-        $this->_driver = strtolower($config['driver']);
-        unset($config['driver']);
-
-        if (!empty($config['slaves'])) {
-            $this->_slave_configs = $config['slaves'];
-            unset($config['slaves']);
-        } elseif (!empty($config['slave'])) {
-            $this->_slave_configs[] = $config['slave'];
+        if (!empty($config['slave'])) {
+            self::$_slave_config = $config['slave'];
             unset($config['slave']);
         }
-        if (!empty($config['masters'])) {
-            $this->_master_configs = $config['masters'];
-        } else {
-            $this->_master_configs[] = $config;
-        }
-        if (empty($this->_master_configs)) {
-            throw new \Exception('Master database config is empty');
-        }
-
-        // random of the index for the pdo instance
-        $master_count = count($this->_master_configs);
-        if ($master_count > 1) {
-            $this->_master_index = mt_rand(0, $master_count - 1);
-        }
-
-        $slave_count = count($this->_slave_configs);
-        if ($slave_count > 1) {
-            $this->_slave_index = mt_rand(0, $slave_count - 1);
-        }
-    }
-
-
-    /**
-     * Get current database driver name
-     */
-    public function driver()
-    {
-        return $this->_driver;
-    }
-
-
-    /**
-     * Get adapter
-     */
-    protected function _adapter($config)
-    {
-        return new Adapter($config);
+        self::$_master_config = $config;
     }
 
     /**
-     * Get PDO instance
-     * @return \PDO
+     * @return PDO
      */
-    public function pdo()
+    public function getPDO()
     {
         return $this->master();
     }
 
     /**
-     * Get a master PDO instance
-     * @return \PDO
+     * @return PDO
      */
     public function master()
     {
-        if (!isset($this->_master_pdos[$this->_master_index])) {
-            $this->_master_pdos[$this->_master_index] = $this->_adapter($this->_master_configs[$this->_master_index])->connect();
+        static $pdo = null;
+        if (null === $pdo) {
+            $pdo = $this->_connect(self::$_master_config);
         }
-        return $this->_master_pdos[$this->_master_index];
+        return $pdo;
     }
 
     /**
-     * Get a slave PDO instance
-     * @return \PDO
+     * @return PDO
      */
     public function slave()
     {
-        if (empty($this->_slave_configs)) {
+        if (empty($this->_slave_config) || $this->_transactions > 0) {
             return $this->master();
         }
-        if (!isset($this->_slave_pdos[$this->_slave_index])) {
-            $this->_slave_pdos[$this->_slave_index] = $this->_adapter($this->_slave_configs[$this->_slave_index])->connect();
+        static $pdo = null;
+        if (null === $pdo) {
+            $pdo = $this->_connect(self::$_slave_config);
         }
-        return $this->_slave_pdos[$this->_slave_index];
+        return $pdo;
     }
 
-
     /**
-     * Parse bind as array
+     * @param array $config
+     * @return PDO
      */
-    protected function _bind($bind)
+    protected static function _connect($config)
     {
-        if ($bind === null) {
-            return null;
+        if (empty($config['dsn'])) {
+            throw new \InvalidArgumentException('dsn config is required for database connection');
         }
-        is_array($bind) || $bind = [$bind];
-        return $bind;
+        $username = isset($config['username']) ? $config['username'] : null;
+        $password = isset($config['password']) ? $config['password'] : null;
+        $options = isset($config['options']) ? $config['options'] : null;
+        return new PDO($config['dsn'], $username, $password, $options);
     }
 
+
     /**
-     * Run a select statement against the database.
+     * get pdostatment
      * @param string $sql
      * @param mixed $bind
      * @param int $fetch_mode PDO fetch mode
      * @return \PDOStatement
      */
-    public function select($sql, $bind = null, $fetch_mode = null, $fetch_args = null)
+    public function selectPrepare($sql, $bind = null, $fetch_mode = null, $fetch_args = null)
     {
         $stmt = $this->slave()->prepare($sql);
         $stmt->execute($this->_bind($bind));
@@ -136,25 +86,53 @@ class Connection
     }
 
     /**
-     * Execute an SQL statement and return the boolean result.
-     * @param  string  $sql
-     * @param  array   $bind
-     * @return bool
+     * fetch all array with assoc, empty array returned if nothing or false
+     * @return array
      */
-    public function execute($sql, $bind = null)
+    public function fetchAll($sql, $bind = null)
     {
-        return $this->master()->prepare($sql)->execute($this->_bind($bind));
+        return $this->selectPrepare($sql, $bind)->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * fetch one row array with assoc, empty array returned if nothing or false
+     * @return array
+     */
+    public function fetchRow($sql, $bind = null)
+    {
+        return $this->selectPrepare($sql, $bind)->fetch(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * fetch first column array, empty array returned if nothing or false
+     * @return array
+     */
+    public function fetchColumn($sql, $bind = null)
+    {
+        return $this->selectPrepare($sql, $bind)->fetchAll(PDO::FETCH_COLUMN, 0);
+    }
+
+    /**
+     * Execute an SQL statement and return the boolean result.
+     * @param $sql
+     * @param null $bind
+     * @param &$stmt
+     * @param int $row_count
+     */
+    public function execute($sql, $bind = null, &$stmt = null)
+    {
+        $stmt = $this->master()->prepare($sql);
+        return $stmt->execute($this->_bind($bind));
     }
 
     /**
      * Get last insert id
      * @return int|string
      */
-    public function lastInsertId()
+    public function getLastInsertId()
     {
         return $this->master()->lastInsertId();
     }
-
 
     /**
      * Execute a Closure within a transaction.
@@ -165,15 +143,13 @@ class Connection
     public function transaction(\Closure $callback)
     {
         $this->beginTransaction();
-
         try {
             $result = $callback($this);
             $this->commit();
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             $this->rollBack();
             throw $e;
         }
-
         return $result;
     }
 
@@ -215,40 +191,20 @@ class Connection
         }
     }
 
-    /**
-     * Query
-     * If thers has space in $base then use it as raw sql, otherwise use as table
-     * @param string $base sql|table
-     * @param mixed $bind for sql
-     * @return Query\Sql|Query\Table
-     */
-    public function query($base, $bind = null)
-    {
-        if (strpos($base, ' ')) {
-            return $this->sql($base, $bind);
-        } else {
-            return $this->table($base);
-        }
-    }
 
     /**
-     * Use raw sql query
-     * @param string $sql
+     * Parse bind as array
      * @param mixed $bind
-     * @return Query\Sql
+     * @return null|array
      */
-    public function sql($sql, $bind = null)
+    protected function _bind($bind)
     {
-        return new Query\Sql($this, $sql, $bind);
-    }
-
-    /**
-     * Use table builder query
-     * @param string $table
-     * @return Query\Table
-     */
-    public function table($table)
-    {
-        return new Query\Table($this, $table);
+        if ($bind === null) {
+            return null;
+        }
+        if (!is_array($bind)) {
+            $bind = [$bind];
+        }
+        return $bind;
     }
 }
