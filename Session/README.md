@@ -21,15 +21,11 @@ Session::config(array(
 use Sutil\Cache\Cache;
 use Sutil\Session\Session;
 
-Cache::config(array(
-    'default' => 'memcache',
-    'memcache' => ['host' => '115.28.12.139']
-));
 
 Session::config(array(
     'lifetime' => '1000',
     'handler' => 'cache',
-    'connection' => 'memcache'
+    'storage' => 'memcache'
 ));
 
 Session::set('test', 111);

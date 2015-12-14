@@ -1,6 +1,6 @@
-<?php namespace Sutil\Cache\Storage;
+<?php namespace Sutil\Cache\Adapter;
 
-interface StorageInterface
+interface AdapterInterface
 {
     /**
      * Get cache data

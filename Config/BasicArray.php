@@ -5,17 +5,9 @@ class BasicArray
     protected static $_pool = [];
 
     /**
-     * Load data
-     * @param array $val
-     */
-    public static function load(array $pool)
-    {
-        self::$_pool = $pool;
-    }
-
-    /**
      * @param string $key use dot to find the deep value
      * @param mixed $default
+     * @return mixed
      */
     public static function get($key, $default = null)
     {
@@ -26,14 +18,19 @@ class BasicArray
      * @param string $key
      * @param mixed $value
      */
-    public static function set($key, $value)
+    public static function set($key, $value = null)
     {
-        self::$_pool[$key] = $value;
+        if (is_array($key)) {
+            self::$_pool = array_merge(self::$_pool, $key);
+        } else {
+            self::$_pool[$key] = $value;
+        }
     }
 
     /**
      * Check if exists
      * @param string $key
+     * @return bool
      */
     public static function has($key)
     {
@@ -42,6 +39,7 @@ class BasicArray
 
     /**
      * Get all data
+     * @return array
      */
     public static function all()
     {

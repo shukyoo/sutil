@@ -1,63 +1,64 @@
 <?php namespace Sutil\Cache;
 
+use Sutil\Storage\Storage;
+
+/**
+ * config e.g.
+ * [
+ *     'expiration' => 3600,
+ *     'storage' => 'redis'
+ * ]
+ */
 class Cache
 {
     protected static $_config = [];
 
     public static function config(array $config)
     {
-        if (empty($config['default']) && empty($config['driver'])) {
-            throw new \Exception('Invalid cache config');
+        if (empty(self::$_config['storage'])) {
+            throw new \InvalidArgumentException('cache missing storage config');
         }
         self::$_config = $config;
     }
 
+
     /**
-     * @param string $name
+     * @param null $name
+     * @return Adapter\AdapterInterface
+     */
+    public static function getAdapter($name = null)
+    {
+        static $adapter = null;
+        if (null === $adapter) {
+            if (!$name) {
+                $name = ucfirst(strtolower(self::$_config['storage']));
+            }
+            $class = __NAMESPACE__ .'\\Adapter\\'. $name;
+            $method = 'get'. $name;
+            $adapter = new $class(Storage::$method());
+        }
+        return $adapter;
+    }
+
+    /**
+     * @return Backend
+     */
+    public static function getBackend()
+    {
+        static $backend = null;
+        if (null === $backend) {
+            $backend = new Backend(self::getAdapter(), self::$_config);
+        }
+        return $backend;
+    }
+
+    /**
+     * @param string $method
+     * @param array $args
      * @return mixed
      */
-    public static function getConfig($name = null)
+    protected static function __callStatic($method, $args = [])
     {
-        return isset($name) ? self::$_config[$name] : self::$_config;
-    }
-
-
-    /**
-     * @param string $storage_name
-     * @return Backend
-     * @throws \Exception
-     */
-    public static function backend($storage_name = null)
-    {
-        static $backends = [];
-
-        if (!empty($storage_name)) {
-            $name = $storage_name;
-        } else {
-            $name = !empty(self::$_config['default']) ? self::$_config['default'] : self::$_config['driver'];
-        }
-        if (!isset($backends[$name])) {
-            if ($storage_name || !empty(self::$_config['default'])) {
-                $index = $storage_name ?: self::$_config['default'];
-                if (empty(self::$_config[$index])) {
-                    throw new \Exception('Invalid storage name in cache config');
-                }
-                $config = self::$_config[$index];
-            } else {
-                $config = self::$_config;
-            }
-            $backends[$name] = new Backend($config);
-        }
-
-        return $backends[$name];
-    }
-
-
-    /**
-     * Static call connection method
-     */
-    public static function __callStatic($method, $args)
-    {
-        return call_user_func_array([self::backend(), $method], $args);
+        return call_user_func_array([self::getBackend(), $method], $args);
     }
 }

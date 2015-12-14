@@ -1,13 +1,14 @@
-<?php namespace Sutil\Session\Handlers;
+<?php namespace Sutil\Session;
 
-use Sutil\Cache\BackendInterface;
+use SessionHandlerInterface;
+use Sutil\Cache\Adapter\AdapterInterface;
 
-class Cache implements \SessionHandlerInterface
+class CacheStore implements SessionHandlerInterface
 {
     protected $_cache = null;
     protected $_lifetime = 1440;
 
-    public function __construct(BackendInterface $cache, $lifetime)
+    public function __construct(AdapterInterface $cache, $lifetime)
     {
         $this->_cache = $cache;
         $this->_lifetime = $lifetime;

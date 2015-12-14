@@ -1,5 +1,6 @@
 <?php namespace Sutil\Session;
 
+use Sutil\Cache\Cache;
 
 class Session
 {
@@ -18,12 +19,12 @@ class Session
 
     /**
      * Create cache handler
-     * @return Handlers\Cache
+     * @return CacheStore
      */
     protected static function _createCacheHandler()
     {
-        $connection = empty(self::$_config['connection']) ? null : self::$_config['connection'];
-        return new Handlers\Cache(\Sutil\Cache\Cache::backend($connection), self::$_config['lifetime']);
+        $store = empty(self::$_config['storage']) ? null : self::$_config['storage'];
+        return new CacheStore(Cache::getAdapter($store), self::$_config['lifetime']);
     }
 
 
