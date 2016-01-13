@@ -23,6 +23,7 @@ class Validator
      *
      * @param mixed $value
      * @param mixed $rule
+     * @param string $message
      * @return bool
      */
     public static function check($value, $rule, &$message = '')
@@ -38,6 +39,7 @@ class Validator
      * @param mixed $rule
      * @param string $message
      * @return bool
+     * @throws \RuntimeException
      */
     public function validate($value, $rule, &$message = '')
     {
@@ -70,7 +72,7 @@ class Validator
                     $param = null;
                 }
                 if (!in_array($method, $methods)) {
-                    throw new \Exception('Invalid validation method:'. $method);
+                    throw new \RuntimeException('Invalid validation method:'. $method);
                 }
                 if (!$this->$method($v, $param)) {
                     $message = $msg;
@@ -119,6 +121,17 @@ class Validator
         }
         $date = date_parse($value);
         return checkdate($date['month'], $date['day'], $date['year']);
+    }
+
+    /**
+     * @param string $value
+     * @param string $format
+     * @return bool
+     */
+    protected function _datetime($value, $format = 'Y-m-d H:i:s')
+    {
+        $d = \DateTime::createFromFormat($format, $value);
+        return $d && $d->format($format) == $value;
     }
 
     /**

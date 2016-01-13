@@ -15,7 +15,7 @@ class Cache
 
     public static function config(array $config)
     {
-        if (empty(self::$_config['storage'])) {
+        if (empty($config['storage'])) {
             throw new \InvalidArgumentException('cache missing storage config');
         }
         self::$_config = $config;
@@ -57,7 +57,7 @@ class Cache
      * @param array $args
      * @return mixed
      */
-    protected static function __callStatic($method, $args = [])
+    public static function __callStatic($method, $args = [])
     {
         return call_user_func_array([self::getBackend(), $method], $args);
     }

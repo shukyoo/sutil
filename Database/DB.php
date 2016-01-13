@@ -43,7 +43,7 @@ class DB
      * @param array $data
      * @return bool
      */
-    public function insert($table, array $data)
+    public static function insert($table, array $data)
     {
         return self::query($table)->insert($data);
     }
@@ -54,7 +54,7 @@ class DB
      * @param null $where
      * @return bool
      */
-    public function update($table, array $data, $where = null)
+    public static function update($table, array $data, $where = null)
     {
         return self::query($table)->update($data, $where);
     }
@@ -64,7 +64,7 @@ class DB
      * @param null $where
      * @return bool
      */
-    public function delete($table, $where = null)
+    public static function delete($table, $where = null)
     {
         return self::query($table)->delete($where);
     }
@@ -74,7 +74,7 @@ class DB
      * @param null $table
      * @return Query
      */
-    public function query($table = null)
+    public static function query($table = null)
     {
         if (self::$_grammar) {
             $grammar = new self::$_grammar();
@@ -94,7 +94,7 @@ class DB
      * @param array $args
      * @return mixed
      */
-    protected static function __callStatic($method, $args = [])
+    public static function __callStatic($method, $args = [])
     {
         return call_user_func_array([self::getConnection(), $method], $args);
     }

@@ -8,7 +8,29 @@ class Grammar
      */
     public function from($table)
     {
-        return ' FROM '. $this->quoteIdent($table);
+        if (is_array($table) && !empty($table[1])) {
+            return ' FROM '. $this->quoteIdent($table[0]) .' AS '. $table[1];
+        } else {
+            return ' FROM '. $this->quoteIdent($table);
+        }
+    }
+
+    /**
+     * @param $join
+     * @return string
+     */
+    public function join($join)
+    {
+        $str = '';
+        foreach ($join as $item) {
+            if (is_array($item['table']) && !empty($item['table'][1])) {
+                $table = $this->quoteIdent($item['table'][0]) .' AS '. $item['table'][1];
+            } else {
+                $table = $this->quoteIdent($item['table']);
+            }
+            $str .= ' '. $item['type'] .' '. $table .' ON '. $item['on'];
+        }
+        return $str;
     }
 
     /**
@@ -88,8 +110,8 @@ class Grammar
     {
         $sets = [];
         foreach ($data as $k => $v) {
-            if (is_array($v) && isset($val[0])) {
-                $val = $val[0];
+            if (is_array($v) && isset($v[0])) {
+                $val = $v[0];
                 unset($data[$k]);
             } else {
                 $val = '?';
@@ -117,6 +139,20 @@ class Grammar
      * @return string
      */
     public function quoteIdent($field)
+    {
+        $poz = strpos($field, '.');
+        if ($poz) {
+            return ($this->_quote(substr($field, 0, $poz)) .'.'. $this->_quote(substr($field, $poz+1)));
+        } else {
+            return $this->_quote($field);
+        }
+    }
+
+    /**
+     * @param $field
+     * @return string
+     */
+    protected function _quote($field)
     {
         return '`'.str_replace('`', '``', trim($field)).'`';
     }

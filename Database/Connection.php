@@ -269,10 +269,7 @@ class Connection
      */
     protected function _bind($bind)
     {
-        if ($bind === null) {
-            return null;
-        }
-        if (!is_array($bind)) {
+        if ($bind !== null && !is_array($bind)) {
             $bind = [$bind];
         }
         return $bind;

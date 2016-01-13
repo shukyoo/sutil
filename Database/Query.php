@@ -15,6 +15,7 @@ class Query
     protected $_bind = [];
 
     protected $_table = '';
+    protected $_join;
     protected $_distinct = false;
     protected $_selection = ['*'];
     protected $_where = '';
@@ -37,6 +38,93 @@ class Query
     {
         $this->_table = $table;
         return $this;
+    }
+
+    /**
+     * @param $table
+     * @param $on
+     * @return $this
+     */
+    public function leftJoin($table, $on)
+    {
+        return $this->join('LEFT JOIN', $table, $on);
+    }
+
+    /**
+     * @param $table
+     * @param $on
+     * @return $this
+     */
+    public function rightJoin($table, $on)
+    {
+        return $this->join('RIGHT JOIN', $table, $on);
+    }
+
+    /**
+     * @param $table
+     * @param $on
+     * @return $this
+     */
+    public function innerJoin($table, $on)
+    {
+        return $this->join('INNER JOIN', $table, $on);
+    }
+
+    /**
+     * @param $table
+     * @param $on
+     * @return $this
+     */
+    public function fullJoin($table, $on)
+    {
+        return $this->join('FULL JOIN', $table, $on);
+    }
+
+    /**
+     * @param $type
+     * @param $table
+     * @param $on
+     * ['a.id', '=', 'b.a_id']
+     * ['on' => ['a.id', '=', 'b.a_id'], 'oron' => ['a.id', '=', 'b.a_id'], 'where'=>['b.name' => 'test']]
+     * @return $this
+     */
+    public function join($type, $table, $on)
+    {
+        $this->_join[] = array(
+            'type' => $type,
+            'table' => $table,
+            'on' => $this->_on($on)
+        );
+        return $this;
+    }
+
+    protected function _on($on)
+    {
+        if (is_string($on)) {
+            return $on;
+        } elseif (!empty($on[0]) && is_string($on[0])) {
+            return $this->_onParse($on[0], $on[1], $on[2]);
+        } else {
+            $str = '';
+            foreach ($on as $k=>$item) {
+                if ($k == 'on') {
+                    $str .= ($str ? ' AND ' : '');
+                    $str .= $this->_onParse($item[0], $item[1], $item[2]);
+                } elseif ($k == 'oron') {
+                    $str .= ' OR ';
+                    $str .= $this->_onParse($item[0], $item[1], $item[2]);
+                } elseif ($k == 'where') {
+                    $where = $this->_where($item);
+                    $str .= ($str ? ' AND ('. $where .')' : $where);
+                }
+            }
+            return $str;
+        }
+    }
+
+    protected function _onParse($f1, $op, $f2)
+    {
+        return $this->_grammar->quoteIdent($f1) . $op . $this->_grammar->quoteIdent($f2);
     }
 
     /**
@@ -153,7 +241,7 @@ class Query
         'or' => []
     ]
      * @param mixed $where
-     * @return string
+     * @return $this
      */
     public function where($where)
     {
@@ -165,6 +253,10 @@ class Query
         return $this;
     }
 
+    /**
+     * @param $where
+     * @return $this
+     */
     public function orWhere($where)
     {
         $this->_where .= ' OR ('. $this->_where($where) .')';
@@ -355,6 +447,9 @@ class Query
     public function getSql()
     {
         $sql = $this->_grammar->select($this->_selection, $this->_distinct) . $this->_grammar->from($this->_table);
+        if ($this->_join) {
+            $sql .= $this->_grammar->join($this->_join);
+        }
         if ($this->_where) {
             $sql .= ' WHERE ' . trim($this->_where);
         }
