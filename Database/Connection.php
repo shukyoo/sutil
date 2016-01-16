@@ -7,6 +7,8 @@ class Connection
     protected static $_master_config = [];
     protected static $_slave_config = [];
     protected $_transactions = 0;
+    protected $_last_error;
+    protected $_last_errmsg;
 
     public function __construct(array $config)
     {
@@ -79,7 +81,7 @@ class Connection
     public function selectPrepare($sql, $bind = null, $fetch_mode = null, $fetch_args = null)
     {
         $stmt = $this->slave()->prepare($sql);
-        $stmt->execute($this->_bind($bind));
+        $stmt->execute($this->_getBind($bind));
         if (null !== $fetch_mode) {
             $stmt->setFetchMode($fetch_mode, $fetch_args);
         }
@@ -192,7 +194,30 @@ class Connection
     public function execute($sql, $bind = null, &$stmt = null)
     {
         $stmt = $this->master()->prepare($sql);
-        return $stmt->execute($this->_bind($bind));
+        $res = $stmt->execute($this->_getBind($bind));
+        if (false === $res) {
+            $this->_last_error = $stmt->errorInfo();
+            if (isset($this->_last_error[2])) {
+                $this->_last_errmsg = $this->_last_error[2];
+            }
+        }
+        return $res;
+    }
+
+    /**
+     * @return string
+     */
+    public function getLastErrmsg()
+    {
+        return $this->_last_errmsg;
+    }
+
+    /**
+     * @return array
+     */
+    public function getLastError()
+    {
+        return $this->_last_error;
     }
 
     /**
@@ -267,11 +292,11 @@ class Connection
      * @param mixed $bind
      * @return null|array
      */
-    protected function _bind($bind)
+    protected function _getBind($bind)
     {
         if ($bind !== null && !is_array($bind)) {
             $bind = [$bind];
         }
-        return $bind;
+        return array_values($bind);
     }
 }

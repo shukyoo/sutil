@@ -8,11 +8,7 @@ class Grammar
      */
     public function from($table)
     {
-        if (is_array($table) && !empty($table[1])) {
-            return ' FROM '. $this->quoteIdent($table[0]) .' AS '. $table[1];
-        } else {
-            return ' FROM '. $this->quoteIdent($table);
-        }
+        return ' FROM '. $this->quoteIdent($table);
     }
 
     /**
@@ -133,6 +129,17 @@ class Grammar
         return 'DELETE FROM '. $this->quoteIdent($table) . $where;
     }
 
+    /**
+     * @param string $table
+     * @param null $where
+     * @return string
+     */
+    public function count($table, $where = null)
+    {
+        $where = $where ? (' WHERE '. $where) : '';
+        return 'SELECT COUNT(*)'. $this->from($table) . $where;
+    }
+
 
     /**
      * @param $field
@@ -154,6 +161,9 @@ class Grammar
      */
     protected function _quote($field)
     {
+        if ($field == '*') {
+            return '*';
+        }
         return '`'.str_replace('`', '``', trim($field)).'`';
     }
 }

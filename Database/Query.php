@@ -245,10 +245,28 @@ class Query
      */
     public function where($where)
     {
-        if ($this->_where) {
-            $this->_where .= ' AND ('. $this->_where($where) .')';
-        } else {
-            $this->_where = $this->_where($where);
+        if (!is_null($where)) {
+            if ($this->_where) {
+                $this->_where .= ' AND '. $this->_where($where);
+            } else {
+                $this->_where = $this->_where($where);
+            }
+        }
+        return $this;
+    }
+
+    /**
+     * @param $where
+     * @return $this
+     */
+    public function andWhere($where)
+    {
+        if (!is_null($where)) {
+            if ($this->_where) {
+                $this->_where .= ' AND ('. $this->_where($where) .')';
+            } else {
+                $this->_where = $this->_where($where);
+            }
         }
         return $this;
     }
@@ -259,10 +277,16 @@ class Query
      */
     public function orWhere($where)
     {
-        $this->_where .= ' OR ('. $this->_where($where) .')';
+        if (!is_null($where)) {
+            $this->_where .= ' OR ('. $this->_where($where) .')';
+        }
         return $this;
     }
 
+    /**
+     * @param $where
+     * @return string
+     */
     public function _where($where)
     {
         if (!is_array($where)) {
@@ -412,6 +436,19 @@ class Query
         return $this->_connection->execute($sql, $this->getBind());
     }
 
+    /**
+     * @param null $where
+     * @return int
+     */
+    public function count($where = null)
+    {
+        if ($where) {
+            $this->where($where);
+        }
+        $sql = $this->_grammar->count($this->_table, $this->_where);
+        return (int)$this->_connection->fetchOne($sql, $this->getBind());
+    }
+
 
     /**
      * fetch all array with assoc, empty array returned if nothing or false
@@ -438,6 +475,24 @@ class Query
     public function fetchColumn()
     {
         return $this->_connection->fetchColumn($this->getSql(), $this->getBind());
+    }
+
+    /**
+     * fetch pairs of first column as Key and second column as Value, empty array returned if nothing or false
+     * @return array
+     */
+    public function fetchPairs()
+    {
+        return $this->_connection->fetchPairs($this->getSql(), $this->getBind());
+    }
+
+    /**
+     * fetch one column value, false returned if nothing or false
+     * @return mixed
+     */
+    public function fetchOne()
+    {
+        return $this->_connection->fetchOne($this->getSql(), $this->getBind());
     }
 
 
