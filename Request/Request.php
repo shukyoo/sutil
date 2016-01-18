@@ -31,8 +31,11 @@ class Request
      * @param int $flags
      * @return mixed
      */
-    public static function get($key, $default = null, $filter = FILTER_SANITIZE_STRING, $flags = FILTER_FLAG_STRIP_LOW)
+    public static function get($key = null, $default = null, $filter = FILTER_SANITIZE_STRING, $flags = FILTER_FLAG_STRIP_LOW)
     {
+        if (null === $key) {
+            return filter_var($_GET, $filter, FILTER_REQUIRE_ARRAY|$flags);
+        }
         if (!isset($_GET[$key])) {
             return $default;
         }
@@ -67,8 +70,11 @@ class Request
      * @param int $flags
      * @return mixed
      */
-    public static function post($key, $default = null, $filter = FILTER_DEFAULT, $flags = null)
+    public static function post($key = null, $default = null, $filter = FILTER_DEFAULT, $flags = null)
     {
+        if (null === $key) {
+            return $_POST;
+        }
         if (!isset($_POST[$key])) {
             return $default;
         }
