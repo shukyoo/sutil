@@ -418,9 +418,9 @@ class Query
         if ($where) {
             $this->where($where);
         }
-        $this->_bind = array_merge(array_values($data), $this->_bind);
+        $bind = array_merge(array_values($data), $this->_bind);
         $sql = $this->_grammar->update($this->_table, $data, $this->_where);
-        return $this->_connection->execute($sql, $this->getBind());
+        return $this->_connection->execute($sql, $bind);
     }
 
     /**
