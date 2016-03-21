@@ -1,4 +1,4 @@
-<?php namespace Sutil\Validation;
+<?php namespace Sutil\Filter;
 
 class Validator
 {
@@ -66,15 +66,18 @@ class Validator
                 if (strpos($method, ':')) {
                     $p = strpos($method, ':');
                     $param = substr($method, $p+1);
-                    $method = '_'.trim(substr($method, 0, $p));
+                    $method = trim(substr($method, 0, $p));
                 } else {
-                    $method = '_'.trim($method);
+                    $method = trim($method);
                     $param = null;
                 }
                 if (!in_array($method, $methods)) {
                     throw new \RuntimeException('Invalid validation method:'. $method);
                 }
                 if (!$this->$method($v, $param)) {
+                    if (!$msg) {
+                        $msg = $k .' validate failed on '. $method;
+                    }
                     $message = $msg;
                     return false;
                 }
@@ -89,7 +92,7 @@ class Validator
      * @param mixed $value
      * @return bool
      */
-    protected function _required($value)
+    public function required($value)
     {
         if (is_null($value)) {
             return false;
@@ -105,7 +108,7 @@ class Validator
      * @param mixed $value
      * @return bool
      */
-    protected function _email($value)
+    public function email($value)
     {
         return filter_var($value, FILTER_VALIDATE_EMAIL) !== false;
     }
@@ -114,7 +117,7 @@ class Validator
      * @param mixed $value
      * @return bool
      */
-    protected function _date($value)
+    public function date($value)
     {
         if (strtotime($value) === false) {
             return false;
@@ -128,7 +131,7 @@ class Validator
      * @param string $format
      * @return bool
      */
-    protected function _datetime($value, $format = 'Y-m-d H:i:s')
+    public function datetime($value, $format = 'Y-m-d H:i:s')
     {
         $d = \DateTime::createFromFormat($format, $value);
         return $d && $d->format($format) == $value;
@@ -138,7 +141,7 @@ class Validator
      * @param mixed $value
      * @return bool
      */
-    protected function _url($value)
+    public function url($value)
     {
         return filter_var($value, FILTER_VALIDATE_URL) !== false;
     }
@@ -148,7 +151,7 @@ class Validator
      * @param string $param
      * @return bool
      */
-    protected function _match($value, $param)
+    public function match($value, $param)
     {
         return (bool)preg_match($param, $value);
     }
@@ -157,7 +160,7 @@ class Validator
      * @param mixed $value
      * @return bool
      */
-    protected function _string($value)
+    public function string($value)
     {
         return is_string($value);
     }
@@ -166,7 +169,7 @@ class Validator
      * @param mixed $value
      * @return bool
      */
-    protected function _integer($value)
+    public function integer($value)
     {
         return filter_var($value, FILTER_VALIDATE_INT) !== false;
     }
@@ -175,7 +178,7 @@ class Validator
      * @param mixed $value
      * @return bool
      */
-    protected function _numeric($value)
+    public function numeric($value)
     {
         return is_numeric($value);
     }
@@ -184,7 +187,7 @@ class Validator
      * @param $value
      * @return bool
      */
-    protected function _array($value)
+    public function isArray($value)
     {
         return is_array($value);
     }
@@ -194,7 +197,7 @@ class Validator
      * @param int|string $param
      * @return bool
      */
-    protected function _length($value, $param)
+    public function length($value, $param)
     {
         $param = explode(',', $param);
         $min = $param[0];
@@ -211,7 +214,7 @@ class Validator
      * @param int|string $param
      * @return bool
      */
-    protected function _range($value, $param)
+    public function range($value, $param)
     {
         $param = explode(',', $param);
         $min = $param[0];
@@ -226,7 +229,7 @@ class Validator
      * @param mixed $value
      * @return bool
      */
-    protected function _bool($value)
+    public function bool($value)
     {
         return in_array($value, [true, false, 0, 1, '0', '1'], true);
     }
@@ -236,7 +239,7 @@ class Validator
      * @param mixed $param
      * @return bool
      */
-    protected function _same($value, $param)
+    public function same($value, $param)
     {
         return $value == $param;
     }
@@ -247,7 +250,7 @@ class Validator
      * @param mixed $param
      * @return bool
      */
-    protected function _iSame($value, $param)
+    public function iSame($value, $param)
     {
         return strtolower($value) == strtolower($param);
     }
@@ -256,7 +259,7 @@ class Validator
      * @param mixed $value
      * @return bool
      */
-    protected function _ip($value)
+    public function ip($value)
     {
         return filter_var($value, FILTER_VALIDATE_IP) !== false;
     }
@@ -266,7 +269,7 @@ class Validator
      * @param $value
      * @return bool
      */
-    protected function _json($value)
+    public function json($value)
     {
         json_decode($value);
         return json_last_error() === JSON_ERROR_NONE;
@@ -277,7 +280,7 @@ class Validator
      * @param array $param
      * @return bool
      */
-    protected function _in($value, $param)
+    public function in($value, $param)
     {
         return in_array($value, $param);
     }
@@ -288,7 +291,7 @@ class Validator
      * @param array $param
      * @return bool
      */
-    protected function _notIn($value, $param)
+    public function notIn($value, $param)
     {
         return !in_array($value, $param);
     }

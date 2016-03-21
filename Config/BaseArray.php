@@ -1,6 +1,6 @@
 <?php namespace Sutil\Config;
 
-class BasicArray
+class BaseArray
 {
     protected static $_pool = [];
 
@@ -15,7 +15,7 @@ class BasicArray
     }
 
     /**
-     * @param string $key
+     * @param string|array $key
      * @param mixed $value
      */
     public static function set($key, $value = null)

@@ -29,44 +29,13 @@ class DB
     /**
      * @return Connection
      */
-    public static function getConnection()
+    public static function connect()
     {
         static $connection = null;
         if (null === $connection) {
             $connection = new Connection(self::$_config);
         }
         return $connection;
-    }
-
-    /**
-     * @param $table
-     * @param array $data
-     * @return bool
-     */
-    public static function insert($table, array $data)
-    {
-        return self::query($table)->insert($data);
-    }
-
-    /**
-     * @param $table
-     * @param array $data
-     * @param null $where
-     * @return bool
-     */
-    public static function update($table, array $data, $where = null)
-    {
-        return self::query($table)->update($data, $where);
-    }
-
-    /**
-     * @param $table
-     * @param null $where
-     * @return bool
-     */
-    public static function delete($table, $where = null)
-    {
-        return self::query($table)->delete($where);
     }
 
 
@@ -81,7 +50,7 @@ class DB
         } else {
             $grammar = new Grammar();
         }
-        $query = new Query(self::getConnection(), $grammar);
+        $query = new Query(self::connect(), $grammar);
         if ($table) {
             $query = $query->from($table);
         }
@@ -96,6 +65,6 @@ class DB
      */
     public static function __callStatic($method, $args = [])
     {
-        return call_user_func_array([self::getConnection(), $method], $args);
+        return call_user_func_array([self::connect(), $method], $args);
     }
 }

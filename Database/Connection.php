@@ -204,6 +204,7 @@ class Connection
         return $res;
     }
 
+
     /**
      * @return string
      */
@@ -294,8 +295,11 @@ class Connection
      */
     protected function _getBind($bind)
     {
-        if ($bind !== null && !is_array($bind)) {
-            $bind = [$bind];
+        if (null === $bind) {
+            return null;
+        }
+        if (!is_array($bind)) {
+            return [$bind];
         }
         return array_values($bind);
     }

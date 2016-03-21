@@ -397,7 +397,7 @@ class Query
 
 
     /**
-     * Generate insert sql
+     * perform insert
      * @param array $data
      * @return bool
      */
@@ -408,7 +408,7 @@ class Query
     }
 
     /**
-     * Generate update sql
+     * perform update
      * @param array $data
      * @param mixed $where
      * @return bool
@@ -424,6 +424,7 @@ class Query
     }
 
     /**
+     * perform delete
      * @param mixed $where
      * @return bool
      */

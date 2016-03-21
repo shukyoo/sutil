@@ -1,4 +1,4 @@
-<?php namespace Sutil\Request;
+<?php namespace Sutil\Http;
 
 class Request
 {
@@ -70,7 +70,7 @@ class Request
      * @param int $flags
      * @return mixed
      */
-    public static function post($key = null, $default = null, $filter = FILTER_DEFAULT, $flags = null)
+    public static function post($key = null, $default = null, $filter = FILTER_UNSAFE_RAW, $flags = null)
     {
         if (null === $key) {
             return $_POST;
@@ -84,7 +84,7 @@ class Request
                 'options' => ['default' => $default]
             ));
         } else {
-            return filter_input(INPUT_POST, $key, FILTER_DEFAULT, array(
+            return filter_input(INPUT_POST, $key, $filter, array(
                 'flags' => $flags,
                 'options' => ['default' => $default]
             ));
