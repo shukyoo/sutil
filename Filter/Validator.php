@@ -28,8 +28,20 @@ class Validator
      */
     public static function check($value, $rule, &$message = '')
     {
-        $validator = new Validator();
-        return $validator->validate($value, $rule, $message);
+        return self::getInstance()->validate($value, $rule, $message);
+    }
+
+
+    /**
+     * @return Validator
+     */
+    public static function getInstance()
+    {
+        static $instance = null;
+        if (null === $instance) {
+            $instance = new self();
+        }
+        return $instance;
     }
 
 
@@ -76,7 +88,7 @@ class Validator
                 }
                 if (!$this->$method($v, $param)) {
                     if (!$msg) {
-                        $msg = $k .' validate failed on '. $method;
+                        $msg = (is_numeric($k) ? '' : $k) .' failed on '. $method .' validation';
                     }
                     $message = $msg;
                     return false;

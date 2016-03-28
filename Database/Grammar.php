@@ -140,6 +140,17 @@ class Grammar
         return 'SELECT COUNT(*)'. $this->from($table) . $where;
     }
 
+    /**
+     * @param string $table
+     * @param null $where
+     * @return string
+     */
+    public function exists($table, $where = null)
+    {
+        $where = $where ? (' WHERE '. $where) : '';
+        return 'SELECT 1'. $this->from($table) . $where . $this->limit(1);
+    }
+
 
     /**
      * @param $field

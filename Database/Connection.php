@@ -7,8 +7,6 @@ class Connection
     protected static $_master_config = [];
     protected static $_slave_config = [];
     protected $_transactions = 0;
-    protected $_last_error;
-    protected $_last_errmsg;
 
     public function __construct(array $config)
     {
@@ -24,13 +22,13 @@ class Connection
      */
     public function getPDO()
     {
-        return $this->master();
+        return $this->getMaster();
     }
 
     /**
      * @return PDO
      */
-    public function master()
+    public function getMaster()
     {
         static $pdo = null;
         if (null === $pdo) {
@@ -42,10 +40,10 @@ class Connection
     /**
      * @return PDO
      */
-    public function slave()
+    public function getSlave()
     {
         if (empty($this->_slave_config) || $this->_transactions > 0) {
-            return $this->master();
+            return $this->getMaster();
         }
         static $pdo = null;
         if (null === $pdo) {
@@ -71,6 +69,25 @@ class Connection
 
 
     /**
+     * @param $sql
+     * @param PDO $pdo
+     * @return \PDOStatement
+     */
+    public function prepare($sql, PDO $pdo = null)
+    {
+        if (null === $pdo) {
+            $pdo = $this->getMaster();
+        }
+        $stmt = $pdo->prepare($sql);
+        if (!$stmt) {
+            $errinfo = $pdo->errorInfo();
+            throw new \PDOException($errinfo[2], $errinfo[0]);
+        }
+        return $stmt;
+    }
+
+
+    /**
      * get PDOStatement
      * @param string $sql
      * @param mixed $bind
@@ -78,14 +95,33 @@ class Connection
      * @param mixed $fetch_args
      * @return \PDOStatement
      */
-    public function selectPrepare($sql, $bind = null, $fetch_mode = null, $fetch_args = null)
+    public function selectPrepare($sql, $bind = null, $fetch_mode = null, $fetch_arg2 = null, $fetch_arg3 = null)
     {
-        $stmt = $this->slave()->prepare($sql);
+        $stmt = $this->prepare($sql, $this->getSlave());
         $stmt->execute($this->_getBind($bind));
         if (null !== $fetch_mode) {
-            $stmt->setFetchMode($fetch_mode, $fetch_args);
+            $stmt->setFetchMode($fetch_mode, $fetch_arg2, $fetch_arg3);
         }
         return $stmt;
+    }
+
+
+    /**
+     * Execute an SQL statement and return the boolean result.
+     * @param $sql
+     * @param null $bind
+     * @param &$stmt
+     * @return bool
+     */
+    public function execute($sql, $bind = null)
+    {
+        $stmt = $this->prepare($sql, $this->getMaster());
+        $res = $stmt->execute($this->_getBind($bind));
+        if (!$res) {
+            $errinfo = $stmt->errorInfo();
+            throw new \PDOException($errinfo[2], $errinfo[0]);
+        }
+        return $res;
     }
 
     /**
@@ -98,7 +134,7 @@ class Connection
     }
 
     /**
-     * fetch all with firest field as indexed key, empty array returned if nothing or false
+     * fetch all with first field as indexed key, empty array returned if nothing or false
      * @return array
      */
     public function fetchAllIndexed($sql, $bind = null)
@@ -116,32 +152,12 @@ class Connection
     }
 
     /**
-     * fetch array of requested class with mapped data, empty array returned if nothing or false
-     * @param string|object $class
-     * @return array
-     */
-    public function fetchAllClass($sql, $bind, $class)
-    {
-        return $this->selectPrepare($sql, $bind)->fetchAll(PDO::FETCH_CLASS | PDO::FETCH_PROPS_LATE, $class);
-    }
-
-    /**
      * fetch one row array with assoc, empty array returned if nothing or false
      * @return array
      */
     public function fetchRow($sql, $bind = null)
     {
         return $this->selectPrepare($sql, $bind)->fetch(PDO::FETCH_ASSOC);
-    }
-
-    /**
-     * get instance of the class with mapped data, false returned if nothing or false
-     * @param string|object $class
-     * @return object|false
-     */
-    public function fetchRowClass($sql, $bind, $class)
-    {
-        return $this->selectPrepare($sql, $bind, PDO::FETCH_CLASS | PDO::FETCH_PROPS_LATE, $class)->fetch();
     }
 
     /**
@@ -185,49 +201,12 @@ class Connection
     }
 
     /**
-     * Execute an SQL statement and return the boolean result.
-     * @param $sql
-     * @param null $bind
-     * @param &$stmt
-     * @return bool
-     */
-    public function execute($sql, $bind = null, &$stmt = null)
-    {
-        $stmt = $this->master()->prepare($sql);
-        $res = $stmt->execute($this->_getBind($bind));
-        if (false === $res) {
-            $this->_last_error = $stmt->errorInfo();
-            if (isset($this->_last_error[2])) {
-                $this->_last_errmsg = $this->_last_error[2];
-            }
-        }
-        return $res;
-    }
-
-
-    /**
-     * @return string
-     */
-    public function getLastErrmsg()
-    {
-        return $this->_last_errmsg;
-    }
-
-    /**
-     * @return array
-     */
-    public function getLastError()
-    {
-        return $this->_last_error;
-    }
-
-    /**
      * Get last insert id
      * @return int|string
      */
     public function getLastInsertId()
     {
-        return $this->master()->lastInsertId();
+        return $this->getMaster()->lastInsertId();
     }
 
     /**
@@ -257,7 +236,7 @@ class Connection
     {
         ++$this->_transactions;
         if ($this->_transactions == 1) {
-            $this->master()->beginTransaction();
+            $this->getMaster()->beginTransaction();
         }
     }
 
@@ -268,7 +247,7 @@ class Connection
     public function commit()
     {
         if ($this->_transactions == 1) {
-            $this->master()->commit();
+            $this->getMaster()->commit();
         }
         --$this->_transactions;
     }
@@ -280,7 +259,7 @@ class Connection
     public function rollBack()
     {
         if ($this->_transactions == 1) {
-            $this->master()->rollBack();
+            $this->getMaster()->rollBack();
             $this->_transactions = 0;
         } else {
             --$this->_transactions;

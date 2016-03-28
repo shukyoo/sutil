@@ -16,8 +16,19 @@ class Sanitizer
      */
     public static function filter($value, $rule)
     {
-        $sanitizer = new self();
-        return $sanitizer->sanitize($value, $rule);
+        return self::getInstance()->sanitize($value, $rule);
+    }
+
+    /**
+     * @return Sanitizer
+     */
+    public static function getInstance()
+    {
+        static $instance = null;
+        if (null === $instance) {
+            $instance = new self();
+        }
+        return $instance;
     }
 
     /**

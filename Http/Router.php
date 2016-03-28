@@ -2,12 +2,13 @@
 
 class Router
 {
-    protected $_controller = 'index';
+    protected $_controller = 'Index';
     protected $_action = 'index';
     protected $_args;
     protected $_file_path;
     protected $_url_base;
     protected $_url_path;
+    protected $_url_controller = 'index';
 
     public function __construct($path)
     {
@@ -20,14 +21,15 @@ class Router
     {
         $path_arr = explode('/', strtolower($this->_url_path));
         if (!empty($path_arr[0])) {
-            $this->_controller = $path_arr[0];
+            $this->_url_controller = $path_arr[0];
+            $this->_controller = str_replace('-', '', ucwords($path_arr[0], '-'));
         }
         if (!empty($path_arr[1])) {
             $this->_action = str_replace('-', '', ucwords($path_arr[1], '-'));
         }
 
         // foo-bar -> FooBarController
-        $controller_name = str_replace('-', '', ucwords($this->_controller, '-')) .'Controller';
+        $controller_name =  $this->_controller.'Controller';
 
         // new controller instance
         $controller_file = $this->_file_path .'/'. $controller_name .'.php';
@@ -35,17 +37,17 @@ class Router
             throw new RouteException("Invalid controller {$controller_name}");
         }
         require $controller_file;
-        $controller = new $controller_name($this);
+        $controller_instance = new $controller_name($this);
         $action = $this->getAction();
 
         // call action
-        if (!method_exists($controller, $action)) {
+        if (!method_exists($controller_instance, $action)) {
             throw new RouteException("{$action} not exists in {$controller_name}");
         }
         if (empty($this->_args)) {
-            $controller->$action();
+            $controller_instance->$action();
         } else {
-            call_user_func_array([$controller, $action], $this->_args);
+            call_user_func_array([$controller_instance, $action], $this->_args);
         }
     }
 
@@ -58,6 +60,11 @@ class Router
     public function getUrlBase()
     {
         return $this->_url_base;
+    }
+
+    public function getUrlController()
+    {
+        return $this->_url_controller;
     }
 
     public function getController()
@@ -96,6 +103,26 @@ class Router
     }
 
     /**
+     * @param $uri
+     * @param null $params
+     * @return string
+     */
+    public function getActionLink($uri = '', $params = null)
+    {
+        return $this->getLink($this->_url_controller .'/'. ltrim($uri), $params);
+    }
+
+    /**
+     * @param $uri
+     * @param null $params
+     */
+    public function toAction($uri = '', $params = null)
+    {
+        header('Location: '. self::getActionLink($uri, $params));
+        exit;
+    }
+
+    /**
      * @param string $uri
      * @param null|array|string $params
      */
@@ -103,5 +130,14 @@ class Router
     {
         header('Location: '. self::getLink($uri, $params));
         exit;
+    }
+
+    /**
+     * @param $uri
+     * @param null $params
+     */
+    public function to($uri, $params = null)
+    {
+        $this->redirect($uri, $params);
     }
 }
